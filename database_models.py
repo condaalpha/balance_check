@@ -10,6 +10,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.dialects.postgresql import JSON
 from dotenv import load_dotenv
+from sqlalchemy import inspect
 
 # Load environment variables
 load_dotenv('config.env')
@@ -35,20 +36,18 @@ class Address(Base):
         return f"<Address(address='{self.address}', wallet='{self.wallet_type}', browser='{self.browser}')>"
 
 class Balance(Base):
-    """Model for storing address balances from DeBank API"""
+    """Model for storing address total balances from DeBank API"""
     __tablename__ = 'balances'
     
     id = Column(Integer, primary_key=True)
     address = Column(String(42), nullable=False, index=True)
     total_balance_usd = Column(Float)
-    total_balance_eth = Column(Float)
-    chain_balances = Column(JSON)     # Store chain-specific balances
     last_updated = Column(DateTime, default=datetime.utcnow)
     is_valid = Column(Boolean, default=True)
     error_message = Column(Text, nullable=True)
     
     def __repr__(self):
-        return f"<Balance(address='{self.address}', usd={self.total_balance_usd}, eth={self.total_balance_eth})>"
+        return f"<Balance(address='{self.address}', usd={self.total_balance_usd})>"
 
 class ExtractionSession(Base):
     """Model for tracking extraction sessions"""
@@ -90,9 +89,50 @@ class DatabaseManager:
         self.SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=self.engine)
     
     def create_tables(self):
-        """Create all database tables"""
-        Base.metadata.create_all(bind=self.engine)
-        print("✅ Database tables created successfully")
+        """Create all database tables (safe - won't recreate existing tables)"""
+        # Check if tables already exist
+        inspector = inspect(self.engine)
+        existing_tables = inspector.get_table_names()
+        
+        tables_to_create = ['addresses', 'balances', 'extraction_sessions']
+        missing_tables = [table for table in tables_to_create if table not in existing_tables]
+        
+        if missing_tables:
+            print(f"🔧 Creating missing tables: {missing_tables}")
+            Base.metadata.create_all(bind=self.engine)
+            print("✅ Database tables created successfully")
+        else:
+            print("✅ All database tables already exist - data will be preserved")
+    
+    def check_tables_exist(self):
+        """Check if all required tables exist"""
+        inspector = inspect(self.engine)
+        existing_tables = inspector.get_table_names()
+        
+        required_tables = ['addresses', 'balances', 'extraction_sessions']
+        missing_tables = [table for table in required_tables if table not in existing_tables]
+        
+        if missing_tables:
+            print(f"⚠️ Missing tables: {missing_tables}")
+            return False
+        else:
+            print("✅ All required tables exist")
+            return True
+    
+    def get_table_info(self):
+        """Get information about existing tables"""
+        inspector = inspect(self.engine)
+        existing_tables = inspector.get_table_names()
+        
+        info = {}
+        for table_name in existing_tables:
+            columns = inspector.get_columns(table_name)
+            info[table_name] = {
+                'columns': [col['name'] for col in columns],
+                'column_count': len(columns)
+            }
+        
+        return info
     
     def get_session(self):
         """Get database session"""

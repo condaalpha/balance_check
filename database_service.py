@@ -41,7 +41,7 @@ class DatabaseService:
                     existing.source = addr_data.get('source', existing.source)
                     existing.file_path = addr_data.get('file_path', existing.file_path)
                     existing.file_name = addr_data.get('file', existing.file_name)
-                    existing.metadata = addr_data
+                    existing.address_metadata = addr_data
                     existing.extracted_at = datetime.utcnow()
                     print(f"🔄 Updated existing address: {addr_data['address']}")
                 else:
@@ -54,7 +54,7 @@ class DatabaseService:
                         source=addr_data.get('source'),
                         file_path=addr_data.get('file_path'),
                         file_name=addr_data.get('file'),
-                        metadata=addr_data,
+                        address_metadata=addr_data,
                         extracted_at=datetime.utcnow()
                     )
                     session.add(new_address)
@@ -75,7 +75,7 @@ class DatabaseService:
     
     def save_balance(self, address: str, balance_data: Dict) -> bool:
         """
-        Save balance information for an address
+        Save total balance information for an address
         
         Args:
             address (str): Ethereum address
@@ -87,7 +87,7 @@ class DatabaseService:
         session = self.db_manager.get_session()
         
         try:
-            # Parse balance data
+            # Parse balance data to get total_usd_value
             parsed_data = debank_client.parse_balance_data(balance_data.get('total_balance', {}))
             
             # Check if balance record already exists
@@ -96,32 +96,28 @@ class DatabaseService:
             if existing:
                 # Update existing record
                 existing.total_balance_usd = parsed_data['total_balance_usd']
-                existing.total_balance_eth = parsed_data['total_balance_eth']
-                existing.chain_balances = parsed_data['chain_balances']
                 existing.last_updated = datetime.utcnow()
                 existing.is_valid = parsed_data['is_valid']
                 existing.error_message = parsed_data['error_message']
-                print(f"🔄 Updated balance for: {address}")
+                print(f"🔄 Updated total balance for: {address}")
             else:
                 # Create new record
                 new_balance = Balance(
                     address=address,
                     total_balance_usd=parsed_data['total_balance_usd'],
-                    total_balance_eth=parsed_data['total_balance_eth'],
-                    chain_balances=parsed_data['chain_balances'],
                     last_updated=datetime.utcnow(),
                     is_valid=parsed_data['is_valid'],
                     error_message=parsed_data['error_message']
                 )
                 session.add(new_balance)
-                print(f"💾 Saved balance for: {address}")
+                print(f"💾 Saved total balance for: {address}")
             
             session.commit()
             return True
             
         except Exception as e:
             session.rollback()
-            print(f"❌ Error saving balance for {address}: {e}")
+            print(f"❌ Error saving total balance for {address}: {e}")
             return False
         finally:
             self.db_manager.close_session(session)
@@ -257,13 +253,11 @@ class DatabaseService:
             balances = session.query(Balance).filter(Balance.is_valid == True).all()
             
             total_usd = sum(b.total_balance_usd or 0 for b in balances)
-            total_eth = sum(b.total_balance_eth or 0 for b in balances)
             address_count = len(balances)
             
             return {
                 'total_addresses': address_count,
                 'total_balance_usd': total_usd,
-                'total_balance_eth': total_eth,
                 'average_balance_usd': total_usd / address_count if address_count > 0 else 0
             }
             

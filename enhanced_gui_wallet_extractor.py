@@ -225,7 +225,7 @@ class EnhancedWalletExtractorGUI:
             unique_addresses = list(set(addr['address'] for addr in self.addresses))
             
             # Check balances
-            self.balance_results = debank_client.get_multiple_balances(unique_addresses, delay=1.0)
+            self.balance_results = debank_client.get_multiple_balances(unique_addresses, delay=0)
             
             # Update UI in main thread
             self.root.after(0, self._update_balance_results)
@@ -427,7 +427,6 @@ class EnhancedWalletExtractorGUI:
             if balance_data.get('total_balance'):
                 parsed = debank_client.parse_balance_data(balance_data['total_balance'])
                 balances += f"  Total USD: ${parsed['total_balance_usd']:,.2f}\n"
-                balances += f"  Total ETH: {parsed['total_balance_eth']:.6f}\n"
                 balances += f"  Valid: {parsed['is_valid']}\n"
                 
                 if parsed['error_message']:
@@ -482,7 +481,6 @@ class EnhancedWalletExtractorGUI:
         content += f"{'='*60}\n\n"
         content += f"Total addresses in database: {summary.get('total_addresses', 0)}\n"
         content += f"Total portfolio value: ${summary.get('total_balance_usd', 0):,.2f} USD\n"
-        content += f"Total ETH value: {summary.get('total_balance_eth', 0):.6f} ETH\n"
         content += f"Average balance per address: ${summary.get('average_balance_usd', 0):,.2f} USD\n"
         
         return content
@@ -557,18 +555,16 @@ class EnhancedWalletExtractorGUI:
                     writer = csv.writer(f)
                     
                     # Write header
-                    writer.writerow(['Address', 'Account ID', 'Wallet', 'Browser', 'Source', 'File', 'File Path', 'Balance USD', 'Balance ETH'])
+                    writer.writerow(['Address', 'Account ID', 'Wallet', 'Browser', 'Source', 'File', 'File Path', 'Balance USD'])
                     
                     # Write data
                     for addr in self.addresses:
                         balance_usd = 0
-                        balance_eth = 0
                         
                         if addr['address'] in self.balance_results:
                             balance_data = self.balance_results[addr['address']]
                             parsed = debank_client.parse_balance_data(balance_data.get('total_balance', {}))
                             balance_usd = parsed['total_balance_usd']
-                            balance_eth = parsed['total_balance_eth']
                         
                         writer.writerow([
                             addr['address'],
@@ -578,8 +574,7 @@ class EnhancedWalletExtractorGUI:
                             addr['source'],
                             addr['file'],
                             addr.get('file_path', 'N/A'),
-                            f"${balance_usd:,.2f}",
-                            f"{balance_eth:.6f}"
+                            f"${balance_usd:,.2f}"
                         ])
                 
                 messagebox.showinfo("Success", f"Results exported to:\n{file_path}")

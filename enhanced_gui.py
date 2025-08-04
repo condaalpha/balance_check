@@ -100,8 +100,24 @@ class EnhancedGUI:
     def initialize_database(self):
         """Initialize database"""
         try:
+            # Check existing tables
+            tables_exist = db_manager.check_tables_exist()
+            
+            # Get table information
+            table_info = db_manager.get_table_info()
+            
+            # Create tables if needed (safe operation)
             db_manager.create_tables()
-            self.update_db_tab("✅ Database initialized successfully")
+            
+            # Show status
+            status = "✅ Database initialized successfully\n\n"
+            status += "📊 Tables status:\n"
+            for table_name, info in table_info.items():
+                status += f"  ✅ {table_name}: {info['column_count']} columns\n"
+            
+            status += "\n💾 Data will be preserved across application runs"
+            
+            self.update_db_tab(status)
         except Exception as e:
             self.update_db_tab(f"❌ Database error: {e}")
     
@@ -301,7 +317,6 @@ class EnhancedGUI:
             if balance_data.get('total_balance'):
                 parsed = debank_client.parse_balance_data(balance_data['total_balance'])
                 balances += f"  USD: ${parsed['total_balance_usd']:,.2f}\n"
-                balances += f"  ETH: {parsed['total_balance_eth']:.6f}\n"
                 balances += f"  Valid: {parsed['is_valid']}\n"
                 total_usd += parsed['total_balance_usd']
             else:
@@ -320,7 +335,6 @@ class EnhancedGUI:
             content = f"DATABASE SUMMARY\n{'='*50}\n\n"
             content += f"Addresses in DB: {summary.get('total_addresses', 0)}\n"
             content += f"Total value: ${summary.get('total_balance_usd', 0):,.2f} USD\n"
-            content += f"Total ETH: {summary.get('total_balance_eth', 0):.6f}\n"
             content += f"Average: ${summary.get('average_balance_usd', 0):,.2f} USD\n"
             
             self.update_db_tab(content)

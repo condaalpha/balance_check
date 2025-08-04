@@ -39,13 +39,27 @@ def check_config():
     return True
 
 def test_database_connection():
-    """Test database connection"""
+    """Test database connection and show table status"""
     print("🔗 Testing database connection...")
     
     try:
         from database_models import db_manager
+        
+        # Check if tables exist
+        tables_exist = db_manager.check_tables_exist()
+        
+        # Get table information
+        table_info = db_manager.get_table_info()
+        
+        print("📊 Database tables status:")
+        for table_name, info in table_info.items():
+            print(f"  ✅ {table_name}: {info['column_count']} columns")
+        
+        # Create tables if needed (safe operation)
         db_manager.create_tables()
-        print("✅ Database connection successful")
+        
+        print("✅ Database connection and tables ready")
+        print("💾 Data will be preserved across application runs")
         return True
     except Exception as e:
         print(f"❌ Database connection failed: {e}")
