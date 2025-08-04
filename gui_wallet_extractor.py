@@ -203,6 +203,7 @@ class WalletExtractorGUI:
             for i, addr in enumerate(wallet_addresses, 1):
                 summary += f"{i:2d}. {addr['address']}\n"
                 summary += f"    Account ID: {addr['account_id']}\n"
+                summary += f"    Browser: {addr.get('browser', 'Unknown')}\n"
                 summary += f"    Source: {addr['source']}\n"
                 summary += f"    File: {addr['file']}\n"
                 if 'sources' in addr:
@@ -227,6 +228,7 @@ class WalletExtractorGUI:
             details += f"  Address: {addr['address']}\n"
             details += f"  Account ID: {addr['account_id']}\n"
             details += f"  Wallet: {addr['wallet']}\n"
+            details += f"  Browser: {addr.get('browser', 'Unknown')}\n"
             details += f"  Source: {addr['source']}\n"
             details += f"  File: {addr['file']}\n"
             if 'sources' in addr:
@@ -319,7 +321,7 @@ class WalletExtractorGUI:
                     writer = csv.writer(f)
                     
                     # Write header
-                    writer.writerow(['Address', 'Account ID', 'Wallet', 'Source', 'File', 'Sources'])
+                    writer.writerow(['Address', 'Account ID', 'Wallet', 'Browser', 'Source', 'File', 'Sources'])
                     
                     # Write data
                     for addr in self.addresses:
@@ -328,6 +330,7 @@ class WalletExtractorGUI:
                             addr['address'],
                             addr['account_id'],
                             addr['wallet'],
+                            addr.get('browser', 'Unknown'),
                             addr['source'],
                             addr['file'],
                             sources

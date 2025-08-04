@@ -190,7 +190,7 @@ class WalletProcessor:
     
     def process_folder(self, folder_path: str) -> List[Dict]:
         """
-        Process a wallet folder and extract all addresses
+        Process a wallet folder and extract all addresses from any browser structure
         
         Args:
             folder_path (str): Path to the wallet folder (e.g., '64_Duxs-MacBook-Pro.local')
@@ -208,26 +208,44 @@ class WalletProcessor:
         
         all_addresses = []
         
-        # Look for wallet-specific folders recursively
+        # Search recursively for any wallet extension folders
         for wallet_folder in self.extractors.keys():
-            # Search recursively for the wallet folder
+            print(f"🔍 Looking for {wallet_folder}...")
+            
+            # Search recursively for the wallet folder anywhere in the structure
             wallet_paths = list(folder_path.rglob(wallet_folder))
             
             if wallet_paths:
                 for wallet_path in wallet_paths:
                     if wallet_path.is_dir():
-                        print(f"✅ Found wallet folder: {wallet_folder} at {wallet_path.relative_to(folder_path)}")
-                        addresses = self._process_wallet_folder(wallet_path, wallet_folder)
+                        # Try to detect browser from the path
+                        browser = self._detect_browser_from_path(wallet_path, folder_path)
+                        print(f"✅ Found {wallet_folder} at {wallet_path.relative_to(folder_path)} (Browser: {browser})")
+                        addresses = self._process_wallet_folder(wallet_path, wallet_folder, browser)
                         all_addresses.extend(addresses)
             else:
-                print(f"⚠️ Wallet folder not found: {wallet_folder}")
+                print(f"⚠️ {wallet_folder} not found in any subfolder")
         
         # Remove duplicates
         unique_addresses = self._remove_duplicates(all_addresses)
         
         return unique_addresses
     
-    def _process_wallet_folder(self, wallet_path: Path, wallet_folder: str) -> List[Dict]:
+    def _detect_browser_from_path(self, wallet_path: Path, root_path: Path) -> str:
+        """Detect browser type from wallet folder path"""
+        relative_path = wallet_path.relative_to(root_path)
+        path_parts = relative_path.parts
+        
+        # Common browser folder names
+        browser_names = ['Chrome', 'Firefox', 'Brave', 'Edge', 'Opera', 'Safari']
+        
+        for browser in browser_names:
+            if browser in path_parts:
+                return browser
+        
+        return "Unknown"
+    
+    def _process_wallet_folder(self, wallet_path: Path, wallet_folder: str, browser: str = "Unknown") -> List[Dict]:
         """Process a specific wallet folder"""
         
         extractor = self.get_wallet_extractor(wallet_folder)
@@ -242,9 +260,15 @@ class WalletProcessor:
             if file_path.is_file():
                 if file_path.suffix.lower() == '.log':
                     addresses = extractor.extract_from_log_file(str(file_path))
+                    # Add browser information to each address
+                    for addr in addresses:
+                        addr['browser'] = browser
                     all_addresses.extend(addresses)
                 elif file_path.suffix.lower() == '.ldb':
                     addresses = extractor.extract_from_ldb_file(str(file_path))
+                    # Add browser information to each address
+                    for addr in addresses:
+                        addr['browser'] = browser
                     all_addresses.extend(addresses)
         
         return all_addresses
