@@ -206,6 +206,7 @@ class WalletExtractorGUI:
                 summary += f"    Browser: {addr.get('browser', 'Unknown')}\n"
                 summary += f"    Source: {addr['source']}\n"
                 summary += f"    File: {addr['file']}\n"
+                summary += f"    Path: {addr.get('file_path', 'N/A')}\n"
                 if 'sources' in addr:
                     summary += f"    Sources: {', '.join(addr['sources'])}\n"
                 summary += "\n"
@@ -231,6 +232,7 @@ class WalletExtractorGUI:
             details += f"  Browser: {addr.get('browser', 'Unknown')}\n"
             details += f"  Source: {addr['source']}\n"
             details += f"  File: {addr['file']}\n"
+            details += f"  Path: {addr.get('file_path', 'N/A')}\n"
             if 'sources' in addr:
                 details += f"  Sources: {', '.join(addr['sources'])}\n"
             details += f"{'-'*30}\n\n"
@@ -321,7 +323,7 @@ class WalletExtractorGUI:
                     writer = csv.writer(f)
                     
                     # Write header
-                    writer.writerow(['Address', 'Account ID', 'Wallet', 'Browser', 'Source', 'File', 'Sources'])
+                    writer.writerow(['Address', 'Account ID', 'Wallet', 'Browser', 'Source', 'File', 'File Path', 'Sources'])
                     
                     # Write data
                     for addr in self.addresses:
@@ -333,6 +335,7 @@ class WalletExtractorGUI:
                             addr.get('browser', 'Unknown'),
                             addr['source'],
                             addr['file'],
+                            addr.get('file_path', 'N/A'),
                             sources
                         ])
                 

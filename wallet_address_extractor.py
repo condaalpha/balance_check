@@ -94,6 +94,7 @@ class MetaMaskExtractor(WalletExtractor):
                             'account_id': account_id,
                             'source': 'internalAccounts.accounts',
                             'file': os.path.basename(file_path),
+                            'file_path': str(file_path),
                             'wallet': self.get_wallet_name()
                         })
                         print(f"📄 Found account: {account_id} -> {address}")
@@ -161,6 +162,7 @@ class MetaMaskExtractor(WalletExtractor):
                     'account_id': address,  # For ldb files, address is the key
                     'source': 'identities',
                     'file': os.path.basename(file_path),
+                    'file_path': str(file_path),
                     'wallet': self.get_wallet_name()
                 })
                 print(f"📄 Found identity: {address}")
@@ -236,12 +238,33 @@ class WalletProcessor:
         relative_path = wallet_path.relative_to(root_path)
         path_parts = relative_path.parts
         
-        # Common browser folder names
+        # Common browser folder names (case-insensitive matching)
         browser_names = ['Chrome', 'Firefox', 'Brave', 'Edge', 'Opera', 'Safari']
         
         for browser in browser_names:
+            # Check for exact match first
             if browser in path_parts:
                 return browser
+            
+            # Check for case-insensitive match
+            for part in path_parts:
+                if part.lower() == browser.lower():
+                    return browser
+        
+        # Additional checks for common variations
+        path_str = str(relative_path).lower()
+        if 'brave' in path_str:
+            return 'Brave'
+        elif 'chrome' in path_str:
+            return 'Chrome'
+        elif 'firefox' in path_str:
+            return 'Firefox'
+        elif 'edge' in path_str:
+            return 'Edge'
+        elif 'opera' in path_str:
+            return 'Opera'
+        elif 'safari' in path_str:
+            return 'Safari'
         
         return "Unknown"
     
