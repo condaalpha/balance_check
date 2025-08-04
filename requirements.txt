@@ -1,0 +1,21 @@
+# Core dependencies
+pathlib
+json
+
+# Database - PostgreSQL (SQLAlchemy will auto-detect available drivers)
+sqlalchemy==1.4.53
+
+# psycopg2 is a PostgreSQL adapter for Python
+psycopg2==2.9.10
+
+# HTTP requests for DeBank API
+requests==2.31.0
+
+# Environment variables
+python-dotenv==1.0.0
+
+# GUI (if using tkinter)
+# tkinter is included with Python
+
+# Optional: For better JSON handling
+ujson==5.8.0 
