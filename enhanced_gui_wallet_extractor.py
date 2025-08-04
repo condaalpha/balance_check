@@ -391,23 +391,13 @@ class EnhancedWalletExtractorGUI:
             self.addresses_text.insert(tk.END, "No addresses found.")
             return
         
-        details = f"ADDRESS DETAILS\n"
-        details += f"{'='*60}\n\n"
+        addresses = f"ADDRESSES\n"
+        addresses += f"{'='*60}\n\n"
         
-        for i, addr in enumerate(self.addresses, 1):
-            details += f"Address {i}:\n"
-            details += f"  Address: {addr['address']}\n"
-            details += f"  Account ID: {addr['account_id']}\n"
-            details += f"  Wallet: {addr['wallet']}\n"
-            details += f"  Browser: {addr.get('browser', 'Unknown')}\n"
-            details += f"  Source: {addr['source']}\n"
-            details += f"  File: {addr['file']}\n"
-            details += f"  Path: {addr.get('file_path', 'N/A')}\n"
-            if 'sources' in addr:
-                details += f"  Sources: {', '.join(addr['sources'])}\n"
-            details += f"{'-'*40}\n\n"
+        for addr in self.addresses:
+            addresses += f"{addr['address']}\n"
         
-        self.addresses_text.insert(tk.END, details)
+        self.addresses_text.insert(tk.END, addresses)
     
     def _update_balances_tab(self):
         """Update balances tab"""
@@ -417,29 +407,21 @@ class EnhancedWalletExtractorGUI:
             self.balances_text.insert(tk.END, "No balance data available.")
             return
         
-        balances = f"BALANCE INFORMATION\n"
+        balances = f"BALANCES\n"
         balances += f"{'='*60}\n\n"
         
         total_usd = 0
         for address, balance_data in self.balance_results.items():
-            balances += f"Address: {address}\n"
-            
             if balance_data.get('total_balance'):
                 parsed = debank_client.parse_balance_data(balance_data['total_balance'])
-                balances += f"  Total USD: ${parsed['total_balance_usd']:,.2f}\n"
-                balances += f"  Valid: {parsed['is_valid']}\n"
-                
-                if parsed['error_message']:
-                    balances += f"  Error: {parsed['error_message']}\n"
-                
-                total_usd += parsed['total_balance_usd']
+                balance_usd = parsed['total_balance_usd']
+                total_usd += balance_usd
+                balances += f"{address} => ${balance_usd:,.2f}\n"
             else:
-                balances += f"  ❌ No balance data available\n"
-            
-            balances += f"  Fetched: {balance_data.get('fetched_at', 'N/A')}\n"
-            balances += f"{'-'*40}\n\n"
+                balances += f"{address} => No balance data\n"
         
-        balances += f"TOTAL PORTFOLIO VALUE: ${total_usd:,.2f} USD\n"
+        balances += f"\n{'='*60}\n"
+        balances += f"TOTAL: ${total_usd:,.2f} USD\n"
         
         self.balances_text.insert(tk.END, balances)
     

@@ -89,6 +89,10 @@ class EnhancedGUI:
         self.summary_text = scrolledtext.ScrolledText(self.notebook, height=20, width=80)
         self.notebook.add(self.summary_text, text="Summary")
         
+        # Addresses tab
+        self.addresses_text = scrolledtext.ScrolledText(self.notebook, height=20, width=80)
+        self.notebook.add(self.addresses_text, text="Addresses")
+        
         # Balances tab
         self.balances_text = scrolledtext.ScrolledText(self.notebook, height=20, width=80)
         self.notebook.add(self.balances_text, text="Balances")
@@ -222,8 +226,9 @@ class EnhancedGUI:
         self.progress_bar.stop()
         self.progress_var.set(f"Found {len(self.addresses)} addresses")
         
-        # Update summary
+        # Update summary and addresses
         self._update_summary()
+        self._update_addresses()
         
         # Enable buttons
         if self.addresses:
@@ -300,6 +305,21 @@ class EnhancedGUI:
         
         self.summary_text.insert(tk.END, summary)
     
+    def _update_addresses(self):
+        """Update addresses tab"""
+        self.addresses_text.delete(1.0, tk.END)
+        
+        if not self.addresses:
+            self.addresses_text.insert(tk.END, "No addresses found.")
+            return
+        
+        addresses = f"ADDRESSES\n{'='*50}\n\n"
+        
+        for addr in self.addresses:
+            addresses += f"{addr['address']}\n"
+        
+        self.addresses_text.insert(tk.END, addresses)
+    
     def _update_balances(self):
         """Update balances tab"""
         self.balances_text.delete(1.0, tk.END)
@@ -308,23 +328,20 @@ class EnhancedGUI:
             self.balances_text.insert(tk.END, "No balance data available.")
             return
         
-        balances = f"BALANCE INFORMATION\n{'='*50}\n\n"
+        balances = f"BALANCES\n{'='*50}\n\n"
         
         total_usd = 0
         for address, balance_data in self.balance_results.items():
-            balances += f"Address: {address}\n"
-            
             if balance_data.get('total_balance'):
                 parsed = debank_client.parse_balance_data(balance_data['total_balance'])
-                balances += f"  USD: ${parsed['total_balance_usd']:,.2f}\n"
-                balances += f"  Valid: {parsed['is_valid']}\n"
-                total_usd += parsed['total_balance_usd']
+                balance_usd = parsed['total_balance_usd']
+                total_usd += balance_usd
+                balances += f"{address} => ${balance_usd:,.2f}\n"
             else:
-                balances += f"  ❌ No balance data\n"
-            
-            balances += f"{'-'*30}\n\n"
+                balances += f"{address} => No balance data\n"
         
-        balances += f"TOTAL PORTFOLIO: ${total_usd:,.2f} USD\n"
+        balances += f"\n{'='*50}\n"
+        balances += f"TOTAL: ${total_usd:,.2f} USD\n"
         
         self.balances_text.insert(tk.END, balances)
     
