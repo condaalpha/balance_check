@@ -1,7 +1,3 @@
-# Core dependencies
-pathlib
-json
-
 # Database - PostgreSQL (SQLAlchemy will auto-detect available drivers)
 sqlalchemy==1.4.53
 
