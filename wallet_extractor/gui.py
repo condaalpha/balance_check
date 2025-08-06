@@ -15,6 +15,7 @@ from wallet_extractor.extractors import WalletProcessor
 from wallet_extractor.api_client import DeBankClient
 from wallet_extractor.database_service import db_service
 from wallet_extractor.models import db_manager
+from wallet_extractor.wallet_config import WalletConfig
 
 class ModernTheme:
     """Modern dark theme colors and styles"""
@@ -112,6 +113,9 @@ class WalletExtractorGUI:
         self.create_widgets()
         self.add_button_hover_effects()
         self.initialize_database()
+        
+        # Initialize wallet dropdown
+        self.initialize_wallet_dropdown()
     
     def create_widgets(self):
         """Create GUI widgets with modern styling"""
@@ -124,7 +128,7 @@ class WalletExtractorGUI:
         self.root.columnconfigure(0, weight=1)
         self.root.rowconfigure(0, weight=1)
         main_frame.columnconfigure(1, weight=1)
-        main_frame.rowconfigure(4, weight=1)
+        main_frame.rowconfigure(5, weight=1)  # Updated row number
         
         # Title with modern styling
         title_frame = ttk.Frame(main_frame)
@@ -187,9 +191,53 @@ class WalletExtractorGUI:
                                       cursor="hand2")
         self.browse_button.grid(row=0, column=2, pady=5)
         
+        # Wallet selection section
+        wallet_frame = ttk.Frame(main_frame)
+        wallet_frame.grid(row=2, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=(0, 20))
+        wallet_frame.columnconfigure(1, weight=1)
+        
+        # Wallet label
+        wallet_label = tk.Label(wallet_frame, 
+                               text="👛 Wallet Type:", 
+                               font=("Segoe UI", 11, "bold"),
+                               fg=ModernTheme.FG_PRIMARY,
+                               bg=ModernTheme.BG_PRIMARY)
+        wallet_label.grid(row=0, column=0, sticky=tk.W, pady=5)
+        
+        # Wallet dropdown
+        self.wallet_var = tk.StringVar()
+        self.wallet_dropdown = ttk.Combobox(wallet_frame, 
+                                           textvariable=self.wallet_var,
+                                           font=("Segoe UI", 10),
+                                           state="readonly")
+        self.wallet_dropdown.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=(10, 10), pady=5)
+        
+        # Detect wallets button
+        self.detect_button = tk.Button(wallet_frame, 
+                                      text="🔍 Detect Wallets", 
+                                      command=self.detect_wallets,
+                                      font=("Segoe UI", 10, "bold"),
+                                      bg=ModernTheme.ACCENT_SECONDARY,
+                                      fg=ModernTheme.FG_PRIMARY,
+                                      relief="flat",
+                                      bd=0,
+                                      padx=20,
+                                      pady=8,
+                                      cursor="hand2")
+        self.detect_button.grid(row=0, column=2, pady=5)
+        
+        # Wallet info label
+        self.wallet_info_var = tk.StringVar(value="Select a folder and detect wallets")
+        self.wallet_info_label = tk.Label(wallet_frame,
+                                         textvariable=self.wallet_info_var,
+                                         font=("Segoe UI", 9),
+                                         fg=ModernTheme.FG_SECONDARY,
+                                         bg=ModernTheme.BG_PRIMARY)
+        self.wallet_info_label.grid(row=1, column=0, columnspan=3, sticky=tk.W, pady=(5, 0))
+        
         # Action buttons section
         buttons_frame = ttk.Frame(main_frame)
-        buttons_frame.grid(row=2, column=0, columnspan=3, pady=20)
+        buttons_frame.grid(row=3, column=0, columnspan=3, pady=20)
         
         # Modern button styling
         button_style = {
@@ -224,28 +272,28 @@ class WalletExtractorGUI:
         self.save_db_button.pack(side=tk.LEFT, padx=(0, 10))
         
         self.export_button = tk.Button(buttons_frame, 
-                                       text="📤 Export Results", 
-                                       command=self.export_results, 
-                                       state='disabled',
-                                       **button_style)
+                                      text="📤 Export Results", 
+                                      command=self.export_results, 
+                                      state='disabled',
+                                      **button_style)
         self.export_button.pack(side=tk.LEFT, padx=(0, 10))
         
         self.clear_button = tk.Button(buttons_frame, 
-                                      text="🔄 Clear Results", 
-                                      command=self.clear_results,
-                                      font=("Segoe UI", 10, "bold"),
-                                      bg=ModernTheme.WARNING,
-                                      fg=ModernTheme.FG_PRIMARY,
-                                      relief="flat",
-                                      bd=0,
-                                      padx=20,
-                                      pady=10,
-                                      cursor="hand2")
+                                     text="🔄 Clear Results", 
+                                     command=self.clear_results,
+                                     font=("Segoe UI", 10, "bold"),
+                                     bg=ModernTheme.WARNING,
+                                     fg=ModernTheme.FG_PRIMARY,
+                                     relief="flat",
+                                     bd=0,
+                                     padx=20,
+                                     pady=10,
+                                     cursor="hand2")
         self.clear_button.pack(side=tk.LEFT)
         
         # Progress section
         progress_frame = ttk.Frame(main_frame)
-        progress_frame.grid(row=3, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=(0, 20))
+        progress_frame.grid(row=4, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=(0, 20))
         progress_frame.columnconfigure(0, weight=1)
         
         # Progress label
@@ -266,7 +314,7 @@ class WalletExtractorGUI:
         
         # Results notebook with modern styling
         self.notebook = ttk.Notebook(main_frame)
-        self.notebook.grid(row=4, column=0, columnspan=3, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(10, 0))
+        self.notebook.grid(row=5, column=0, columnspan=3, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(10, 0))
         
         # Create tabs with modern text widgets
         self.create_tabs()
@@ -339,7 +387,7 @@ class WalletExtractorGUI:
         
         # Add hover effects to all buttons
         for button in [self.extract_button, self.check_balances_button, 
-                      self.save_db_button, self.export_button, self.browse_button, self.clear_button]:
+                      self.save_db_button, self.export_button, self.browse_button, self.clear_button, self.detect_button]:
             button.bind("<Enter>", on_enter)
             button.bind("<Leave>", on_leave)
     
@@ -369,14 +417,21 @@ class WalletExtractorGUI:
         except Exception as e:
             self.update_db_tab(f"❌ Database error: {e}")
     
+    def initialize_wallet_dropdown(self):
+        """Initialize wallet dropdown with available wallets"""
+        wallet_names = WalletConfig.get_wallet_names()
+        self.wallet_dropdown['values'] = wallet_names
+        if wallet_names:
+            self.wallet_dropdown.set(wallet_names[0])  # Set first wallet as default
+    
     def browse_folder(self):
         """Browse for folder"""
         folder_path = filedialog.askdirectory(title="Select Wallet Folder")
         if folder_path:
             self.folder_path_var.set(folder_path)
     
-    def extract_addresses(self):
-        """Extract addresses from selected folder"""
+    def detect_wallets(self):
+        """Detect wallet types from selected folder"""
         folder_path = self.folder_path_var.get().strip()
         
         if not folder_path:
@@ -390,14 +445,64 @@ class WalletExtractorGUI:
         # Disable buttons and start progress
         self.disable_buttons()
         self.reset_progress()
-        self.progress_var.set("Extracting addresses...")
+        self.progress_var.set("Detecting wallets...")
         
-        # Run extraction in thread
-        thread = threading.Thread(target=self._extract_thread, args=(folder_path,))
+        # Run detection in thread
+        thread = threading.Thread(target=self._detect_wallets_thread, args=(folder_path,))
         thread.daemon = True
         thread.start()
     
-    def _extract_thread(self, folder_path):
+    def _detect_wallets_thread(self, folder_path):
+        """Detect wallets in background thread"""
+        try:
+            # Get selected wallet type
+            wallet_type = self.wallet_var.get()
+            
+            # Create a progress callback
+            def progress_callback(current, total, message):
+                if total > 0:
+                    percentage = int((current / total) * 100)
+                    self.root.after(0, lambda: self.update_progress(percentage, message))
+                else:
+                    self.root.after(0, lambda: self.update_progress(0, message))
+            
+            # Detect wallets with progress tracking
+            detected_wallets = self.wallet_processor.detect_wallets_in_folder(folder_path, wallet_type, progress_callback)
+            
+            # Update GUI in main thread
+            self.root.after(0, lambda: self._update_wallet_detection_results(detected_wallets))
+            
+        except Exception as e:
+            self.root.after(0, lambda: self._show_error(f"Wallet detection error: {e}"))
+    
+    def extract_addresses(self):
+        """Extract addresses from selected folder"""
+        folder_path = self.folder_path_var.get().strip()
+        selected_wallet = self.wallet_var.get()
+        
+        if not folder_path:
+            messagebox.showerror("Error", "Please select a folder path")
+            return
+        
+        if not Path(folder_path).exists():
+            messagebox.showerror("Error", "Selected folder does not exist")
+            return
+        
+        if not selected_wallet:
+            messagebox.showerror("Error", "Please select a wallet type")
+            return
+        
+        # Disable buttons and start progress
+        self.disable_buttons()
+        self.reset_progress()
+        self.progress_var.set(f"Extracting addresses from {selected_wallet}...")
+        
+        # Run extraction in thread
+        thread = threading.Thread(target=self._extract_thread, args=(folder_path, selected_wallet))
+        thread.daemon = True
+        thread.start()
+    
+    def _extract_thread(self, folder_path, selected_wallet):
         """Extract addresses in background thread"""
         try:
             # Create a progress callback
@@ -408,8 +513,8 @@ class WalletExtractorGUI:
                 else:
                     self.root.after(0, lambda: self.update_progress(0, message))
             
-            # Extract addresses with progress tracking
-            self.addresses = self.wallet_processor.process_folder_with_progress(folder_path, progress_callback)
+            # Extract addresses with progress tracking and selected wallet
+            self.addresses = self.wallet_processor.process_folder_with_progress(folder_path, selected_wallet, progress_callback)
             
             # Update GUI in main thread
             self.root.after(0, self._update_extraction_results)
@@ -569,6 +674,26 @@ class WalletExtractorGUI:
         self._update_balances()
         self._update_summary()
     
+    def _update_wallet_detection_results(self, detected_wallets):
+        """Update GUI after wallet detection"""
+        self.complete_progress("Wallet detection completed")
+        
+        if detected_wallets:
+            # Update wallet info label
+            self.wallet_info_var.set(f"✅ Detected {len(detected_wallets)} wallet(s): {', '.join(detected_wallets)}")
+            
+            # Enable extract button
+            self.extract_button.config(state='normal', bg=ModernTheme.ACCENT_PRIMARY)
+        else:
+            # Update wallet info label
+            self.wallet_info_var.set("❌ No wallets detected in the selected folder")
+            
+            # Disable extract button
+            self.extract_button.config(state='disabled', bg=ModernTheme.BG_TERTIARY)
+        
+        # Enable buttons
+        self._enable_buttons()
+    
     def _update_db_save_results(self, addresses_saved, balances_saved):
         """Update GUI after database save"""
         self.complete_progress("Database save completed")
@@ -611,6 +736,8 @@ class WalletExtractorGUI:
             for addr in wallet_addresses:
                 summary += f"  {addr['address']}\n"
                 summary += f"    Browser: {addr.get('browser', 'Unknown')}\n"
+                summary += f"    File: {addr.get('file', 'Unknown')}\n"
+                summary += f"    Path: {addr.get('file_path', 'Unknown')}\n"
                 
                 if addr['address'] in self.balance_results:
                     balance_data = self.balance_results[addr['address']]
@@ -686,6 +813,7 @@ class WalletExtractorGUI:
         self.save_db_button.config(state='disabled', bg=ModernTheme.BG_TERTIARY)
         self.export_button.config(state='disabled', bg=ModernTheme.BG_TERTIARY)
         self.browse_button.config(state='disabled', bg=ModernTheme.BG_TERTIARY)
+        self.detect_button.config(state='disabled', bg=ModernTheme.BG_TERTIARY)
         # Keep clear button enabled
         self.clear_button.config(state='normal', bg=ModernTheme.WARNING)
     
@@ -693,6 +821,7 @@ class WalletExtractorGUI:
         """Enable buttons after operations"""
         self.extract_button.config(state='normal', bg=ModernTheme.ACCENT_PRIMARY)
         self.browse_button.config(state='normal', bg=ModernTheme.ACCENT_PRIMARY)
+        self.detect_button.config(state='normal', bg=ModernTheme.ACCENT_SECONDARY)
         self.clear_button.config(state='normal', bg=ModernTheme.WARNING)
     
     def enable_action_buttons(self):

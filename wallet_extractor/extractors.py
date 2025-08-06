@@ -10,6 +10,7 @@ from pathlib import Path
 from abc import ABC, abstractmethod
 from typing import List, Dict, Optional
 from wallet_extractor.config import Config
+from wallet_extractor.wallet_config import WalletConfig
 
 class WalletExtractor(ABC):
     """Abstract base class for wallet extractors"""
@@ -180,9 +181,12 @@ class WalletProcessor:
     """Main processor for extracting wallet addresses"""
     
     def __init__(self):
-        self.extractors = {
-            Config.SUPPORTED_WALLETS['metamask']: MetaMaskExtractor()
-        }
+        self.extractors = {}
+        # Initialize extractors based on wallet config
+        for wallet_id, config in WalletConfig.SUPPORTED_WALLETS.items():
+            if wallet_id == 'metamask':
+                self.extractors[config['extension_id']] = MetaMaskExtractor()
+            # Add other wallet extractors here as they are implemented
     
     def process_folder(self, folder_path: str) -> List[Dict]:
         """
@@ -227,7 +231,7 @@ class WalletProcessor:
         
         return unique_addresses
     
-    def process_folder_with_progress(self, folder_path: str, progress_callback=None) -> List[Dict]:
+    def process_folder_with_progress(self, folder_path: str, selected_wallet: str = None, progress_callback=None) -> List[Dict]:
         """
         Process a wallet folder and extract all addresses from any browser structure with progress tracking
         
@@ -253,8 +257,22 @@ class WalletProcessor:
         all_files_to_process = []
         wallet_folders_found = []
         
-        for wallet_folder in self.extractors.keys():
-            print(f"🔍 Looking for {wallet_folder}...")
+        # Get wallet configs to process
+        wallets_to_process = []
+        if selected_wallet:
+            # Process only the selected wallet
+            wallet_id, config = WalletConfig.get_wallet_by_name(selected_wallet)
+            if wallet_id and config['extension_id'] in self.extractors:
+                wallets_to_process.append((config['extension_id'], config))
+        else:
+            # Process all available extractors
+            wallets_to_process = [(ext_id, WalletConfig.get_wallet_by_id(wallet_id)) 
+                                for wallet_id, ext_id in [(k, v['extension_id']) 
+                                for k, v in WalletConfig.SUPPORTED_WALLETS.items() 
+                                if v['extension_id'] in self.extractors]]
+        
+        for wallet_folder, config in wallets_to_process:
+            print(f"🔍 Looking for {config['name']} ({wallet_folder})...")
             
             # Search recursively for the wallet folder anywhere in the structure
             wallet_paths = list(folder_path.rglob(wallet_folder))
@@ -264,7 +282,7 @@ class WalletProcessor:
                     if wallet_path.is_dir():
                         # Try to detect browser from the path
                         browser = self._detect_browser_from_path(wallet_path, folder_path)
-                        print(f"✅ Found {wallet_folder} at {wallet_path.relative_to(folder_path)} (Browser: {browser})")
+                        print(f"✅ Found {config['name']} at {wallet_path.relative_to(folder_path)} (Browser: {browser})")
                         
                         # Get all files in this wallet folder
                         all_files = list(wallet_path.rglob('*'))
@@ -275,6 +293,7 @@ class WalletProcessor:
                             'path': wallet_path,
                             'folder': wallet_folder,
                             'browser': browser,
+                            'wallet_name': config['name'],
                             'log_files': log_files,
                             'ldb_files': ldb_files
                         })
@@ -282,7 +301,7 @@ class WalletProcessor:
                         all_files_to_process.extend(log_files)
                         all_files_to_process.extend(ldb_files)
             else:
-                print(f"⚠️ {wallet_folder} not found in any subfolder")
+                print(f"⚠️ {config['name']} not found in any subfolder")
         
         total_files = len(all_files_to_process)
         print(f"📊 Found {total_files} files to process across {len(wallet_folders_found)} wallet folders")
@@ -404,6 +423,61 @@ class WalletProcessor:
         return all_addresses
     
 
+    
+    def detect_wallets_in_folder(self, folder_path: str, selected_wallet: str = None, progress_callback=None) -> List[str]:
+        """
+        Detect which wallets are present in a folder
+        
+        Args:
+            folder_path (str): Path to the folder to scan
+            selected_wallet (str): Specific wallet to look for (optional)
+            progress_callback (callable): Function to call with progress updates
+            
+        Returns:
+            List[str]: List of detected wallet names
+        """
+        if progress_callback:
+            progress_callback(0, 100, "Scanning for wallet folders...")
+        
+        detected_wallets = []
+        folder = Path(folder_path)
+        
+        if not folder.exists():
+            return detected_wallets
+        
+        # Get wallet configs to scan
+        wallets_to_scan = []
+        if selected_wallet:
+            # Scan only the selected wallet
+            wallet_id, config = WalletConfig.get_wallet_by_name(selected_wallet)
+            if wallet_id:
+                wallets_to_scan.append((wallet_id, config))
+        else:
+            # Scan all supported wallets
+            wallets_to_scan = list(WalletConfig.SUPPORTED_WALLETS.items())
+        
+        total_wallets = len(wallets_to_scan)
+        
+        for i, (wallet_id, config) in enumerate(wallets_to_scan):
+            if progress_callback:
+                progress_callback(i, total_wallets, f"Scanning for {config['name']}...")
+            
+            extension_id = config['extension_id']
+            
+            # Search recursively for the extension folder
+            wallet_paths = list(folder.rglob(extension_id))
+            
+            if wallet_paths:
+                for wallet_path in wallet_paths:
+                    if wallet_path.is_dir():
+                        detected_wallets.append(config['name'])
+                        print(f"✅ Found {config['name']} at {wallet_path.relative_to(folder)}")
+                        break  # Found this wallet, move to next
+        
+        if progress_callback:
+            progress_callback(total_wallets, total_wallets, f"Found {len(detected_wallets)} wallets")
+        
+        return detected_wallets
     
     def _remove_duplicates(self, addresses: List[Dict]) -> List[Dict]:
         """Remove duplicate addresses while preserving metadata"""
