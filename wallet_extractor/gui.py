@@ -326,7 +326,7 @@ class WalletExtractorGUI:
         self.summary_text = self.create_modern_text_widget(self.notebook, "📊 Summary")
         
         # Addresses tab
-        self.addresses_text = self.create_modern_text_widget(self.notebook, "📍 Addresses")
+        self.addresses_frame = self.create_addresses_tab()
         
         # Balances tab
         self.balances_text = self.create_modern_text_widget(self.notebook, "💰 Balances")
@@ -369,12 +369,99 @@ class WalletExtractorGUI:
         
         return text_widget
     
+    def create_addresses_tab(self):
+        """Create addresses tab with copy button"""
+        # Create frame for the tab
+        frame = ttk.Frame(self.notebook)
+        self.notebook.add(frame, text="📍 Addresses")
+        
+        # Create button frame at the top
+        button_frame = ttk.Frame(frame)
+        button_frame.grid(row=0, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(10, 5))
+        button_frame.columnconfigure(1, weight=1)
+        
+        # Copy button with modern styling
+        self.copy_addresses_button = tk.Button(button_frame, 
+                                              text="📋 Copy Addresses", 
+                                              command=self.copy_addresses,
+                                              font=("Segoe UI", 10, "bold"),
+                                              bg=ModernTheme.ACCENT_SECONDARY,
+                                              fg=ModernTheme.FG_PRIMARY,
+                                              relief="flat",
+                                              bd=0,
+                                              padx=20,
+                                              pady=8,
+                                              cursor="hand2",
+                                              state='disabled')
+        self.copy_addresses_button.grid(row=0, column=0, padx=(10, 10))
+        
+        # Address count label
+        self.address_count_var = tk.StringVar(value="No addresses found")
+        self.address_count_label = tk.Label(button_frame,
+                                           textvariable=self.address_count_var,
+                                           font=("Segoe UI", 10),
+                                           fg=ModernTheme.FG_SECONDARY,
+                                           bg=ModernTheme.BG_PRIMARY)
+        self.address_count_label.grid(row=0, column=1, sticky=tk.W, padx=(10, 10))
+        
+        # Create text widget with modern styling
+        self.addresses_text = tk.Text(frame, 
+                                     height=20, 
+                                     width=80,
+                                     font=("Consolas", 10),
+                                     bg=ModernTheme.BG_SECONDARY,
+                                     fg=ModernTheme.FG_PRIMARY,
+                                     insertbackground=ModernTheme.FG_PRIMARY,
+                                     selectbackground=ModernTheme.ACCENT_PRIMARY,
+                                     selectforeground=ModernTheme.FG_PRIMARY,
+                                     relief="flat",
+                                     bd=0,
+                                     padx=10,
+                                     pady=10)
+        
+        # Create scrollbar
+        scrollbar = ttk.Scrollbar(frame, orient="vertical", command=self.addresses_text.yview)
+        self.addresses_text.configure(yscrollcommand=scrollbar.set)
+        
+        # Grid layout
+        self.addresses_text.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), padx=10, pady=(0, 10))
+        scrollbar.grid(row=1, column=1, sticky=(tk.N, tk.S), pady=(0, 10))
+        
+        # Configure weights
+        frame.columnconfigure(0, weight=1)
+        frame.rowconfigure(1, weight=1)
+        
+        return frame
+    
+    def copy_addresses(self):
+        """Copy all addresses to clipboard"""
+        if not self.addresses:
+            messagebox.showwarning("Warning", "No addresses to copy")
+            return
+        
+        try:
+            # Get all addresses
+            address_list = [addr['address'] for addr in self.addresses]
+            addresses_text = '\n'.join(address_list)
+            
+            # Copy to clipboard
+            self.root.clipboard_clear()
+            self.root.clipboard_append(addresses_text)
+            
+            # Show success message
+            messagebox.showinfo("Success", f"Copied {len(address_list)} addresses to clipboard!")
+            
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to copy addresses: {e}")
+    
     def add_button_hover_effects(self):
         """Add hover effects to buttons"""
         def on_enter(event):
             if event.widget['state'] != 'disabled':
                 if event.widget == self.clear_button:
                     event.widget.config(bg=ModernTheme.ERROR)
+                elif event.widget == self.copy_addresses_button:
+                    event.widget.config(bg=ModernTheme.SUCCESS)
                 else:
                     event.widget.config(bg=ModernTheme.ACCENT_SECONDARY)
         
@@ -382,12 +469,15 @@ class WalletExtractorGUI:
             if event.widget['state'] != 'disabled':
                 if event.widget == self.clear_button:
                     event.widget.config(bg=ModernTheme.WARNING)
+                elif event.widget == self.copy_addresses_button:
+                    event.widget.config(bg=ModernTheme.ACCENT_SECONDARY)
                 else:
                     event.widget.config(bg=ModernTheme.ACCENT_PRIMARY)
         
         # Add hover effects to all buttons
         for button in [self.extract_button, self.check_balances_button, 
-                      self.save_db_button, self.export_button, self.browse_button, self.clear_button, self.detect_button]:
+                      self.save_db_button, self.export_button, self.browse_button, self.clear_button, 
+                      self.detect_button, self.copy_addresses_button]:
             button.bind("<Enter>", on_enter)
             button.bind("<Leave>", on_leave)
     
@@ -639,6 +729,10 @@ class WalletExtractorGUI:
             self.balances_text.delete(1.0, tk.END)
             self.db_text.delete(1.0, tk.END)
             
+            # Reset address count and copy button
+            self.address_count_var.set("No addresses found")
+            self.copy_addresses_button.config(state='disabled', bg=ModernTheme.BG_TERTIARY)
+            
             # Reset progress
             self.reset_progress()
             self.progress_var.set("Ready")
@@ -754,6 +848,8 @@ class WalletExtractorGUI:
         
         if not self.addresses:
             self.addresses_text.insert(tk.END, "No addresses found.")
+            self.address_count_var.set("No addresses found")
+            self.copy_addresses_button.config(state='disabled', bg=ModernTheme.BG_TERTIARY)
             return
         
         addresses = f"ADDRESSES\n{'='*50}\n\n"
@@ -762,6 +858,10 @@ class WalletExtractorGUI:
             addresses += f"{addr['address']}\n"
         
         self.addresses_text.insert(tk.END, addresses)
+        
+        # Update address count and enable copy button
+        self.address_count_var.set(f"{len(self.addresses)} addresses found")
+        self.copy_addresses_button.config(state='normal', bg=ModernTheme.ACCENT_SECONDARY)
     
     def _update_balances(self):
         """Update balances tab"""
@@ -814,6 +914,7 @@ class WalletExtractorGUI:
         self.export_button.config(state='disabled', bg=ModernTheme.BG_TERTIARY)
         self.browse_button.config(state='disabled', bg=ModernTheme.BG_TERTIARY)
         self.detect_button.config(state='disabled', bg=ModernTheme.BG_TERTIARY)
+        self.copy_addresses_button.config(state='disabled', bg=ModernTheme.BG_TERTIARY)
         # Keep clear button enabled
         self.clear_button.config(state='normal', bg=ModernTheme.WARNING)
     
@@ -823,6 +924,7 @@ class WalletExtractorGUI:
         self.browse_button.config(state='normal', bg=ModernTheme.ACCENT_PRIMARY)
         self.detect_button.config(state='normal', bg=ModernTheme.ACCENT_SECONDARY)
         self.clear_button.config(state='normal', bg=ModernTheme.WARNING)
+        # Copy button state will be managed by _update_addresses
     
     def enable_action_buttons(self):
         """Enable action buttons when addresses are found"""
