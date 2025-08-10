@@ -331,6 +331,9 @@ class WalletExtractorGUI:
         # Balances tab
         self.balances_text = self.create_modern_text_widget(self.notebook, "💰 Balances")
         
+        # Manual Input tab
+        self.manual_input_frame = self.create_manual_input_tab()
+        
         # Database tab
         self.db_text = self.create_modern_text_widget(self.notebook, "🗄️ Database")
     
@@ -433,6 +436,65 @@ class WalletExtractorGUI:
         
         return frame
     
+    def create_manual_input_tab(self):
+        """Create a tab for manual address input and balance checking"""
+        frame = ttk.Frame(self.notebook)
+        self.notebook.add(frame, text="👤 Manual Input")
+
+        # Manual Input Frame
+        manual_input_frame = ttk.Frame(frame)
+        manual_input_frame.grid(row=0, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(10, 5))
+        manual_input_frame.columnconfigure(1, weight=1)
+
+        # Address Input (Multiple addresses)
+        address_label = tk.Label(manual_input_frame, text="Addresses:", font=("Segoe UI", 10, "bold"), fg=ModernTheme.FG_PRIMARY, bg=ModernTheme.BG_PRIMARY)
+        address_label.grid(row=0, column=0, sticky=tk.W, pady=5)
+        
+        # Text area for multiple addresses
+        self.manual_addresses_text = tk.Text(manual_input_frame, height=4, width=50, font=("Consolas", 9), 
+                                            bg=ModernTheme.BG_SECONDARY, fg=ModernTheme.FG_PRIMARY, 
+                                            insertbackground=ModernTheme.FG_PRIMARY, relief="flat", bd=0)
+        self.manual_addresses_text.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=(10, 10), pady=5)
+        
+        # Add placeholder text
+        self.manual_addresses_text.insert(tk.END, "# Enter addresses (one per line)\n# Example:\n# 0x1234567890abcdef...\n# 0xabcdef1234567890...")
+
+        # Wallet Type Input
+        wallet_label = tk.Label(manual_input_frame, text="Wallet Type:", font=("Segoe UI", 10, "bold"), fg=ModernTheme.FG_PRIMARY, bg=ModernTheme.BG_PRIMARY)
+        wallet_label.grid(row=1, column=0, sticky=tk.W, pady=5)
+        self.manual_wallet_var = tk.StringVar()
+        self.manual_wallet_dropdown = ttk.Combobox(manual_input_frame, textvariable=self.manual_wallet_var, font=("Segoe UI", 10), state="readonly")
+        self.manual_wallet_dropdown.grid(row=1, column=1, sticky=(tk.W, tk.E), padx=(10, 10), pady=5)
+
+        # Buttons Frame
+        buttons_frame = ttk.Frame(manual_input_frame)
+        buttons_frame.grid(row=2, column=0, columnspan=2, pady=10)
+        
+        # Balance Check Button
+        self.check_manual_balance_button = tk.Button(buttons_frame, text="💰 Check Balances", command=self.check_manual_balances, 
+                                                   font=("Segoe UI", 10, "bold"), bg=ModernTheme.ACCENT_SECONDARY, 
+                                                   fg=ModernTheme.FG_PRIMARY, relief="flat", bd=0, padx=20, pady=8, cursor="hand2")
+        self.check_manual_balance_button.pack(side=tk.LEFT, padx=(0, 10))
+        
+        # Clear Results Button
+        self.clear_manual_results_button = tk.Button(buttons_frame, text="🔄 Clear Results", command=self.clear_manual_results, 
+                                                   font=("Segoe UI", 10, "bold"), bg=ModernTheme.WARNING, 
+                                                   fg=ModernTheme.FG_PRIMARY, relief="flat", bd=0, padx=20, pady=8, cursor="hand2")
+        self.clear_manual_results_button.pack(side=tk.LEFT)
+
+        # Results Display
+        self.manual_balance_text = tk.Text(frame, height=15, width=80, font=("Consolas", 10), bg=ModernTheme.BG_SECONDARY, 
+                                          fg=ModernTheme.FG_PRIMARY, insertbackground=ModernTheme.FG_PRIMARY, 
+                                          selectbackground=ModernTheme.ACCENT_PRIMARY, selectforeground=ModernTheme.FG_PRIMARY, 
+                                          relief="flat", bd=0, padx=10, pady=10)
+        self.manual_balance_text.grid(row=1, column=0, columnspan=2, sticky=(tk.W, tk.E, tk.N, tk.S), padx=10, pady=(0, 10))
+
+        # Configure weights
+        frame.columnconfigure(0, weight=1)
+        frame.rowconfigure(1, weight=1)
+
+        return frame
+
     def copy_addresses(self):
         """Copy all addresses to clipboard"""
         if not self.addresses:
@@ -513,6 +575,16 @@ class WalletExtractorGUI:
         self.wallet_dropdown['values'] = wallet_names
         if wallet_names:
             self.wallet_dropdown.set(wallet_names[0])  # Set first wallet as default
+        # Initialize manual wallet dropdown
+        self.manual_wallet_dropdown['values'] = wallet_names
+        if wallet_names:
+            self.manual_wallet_dropdown.set(wallet_names[0])
+        else:
+            # If no wallets detected, use all supported wallets
+            all_wallets = WalletConfig.get_wallet_names()
+            self.manual_wallet_dropdown['values'] = all_wallets
+            if all_wallets:
+                self.manual_wallet_dropdown.set(all_wallets[0])
     
     def browse_folder(self):
         """Browse for folder"""
@@ -962,6 +1034,132 @@ class WalletExtractorGUI:
         self._update_addresses()
         self._update_balances()
         self._update_database_info()
+
+    def check_manual_balances(self):
+        """Check balances for multiple manual addresses"""
+        # Get addresses from text area
+        addresses_text = self.manual_addresses_text.get(1.0, tk.END).strip()
+        wallet_type = self.manual_wallet_var.get()
+
+        if not addresses_text or addresses_text.startswith("#"):
+            messagebox.showwarning("Warning", "Please enter addresses to check.")
+            return
+
+        if not wallet_type:
+            messagebox.showwarning("Warning", "Please select a wallet type.")
+            return
+
+        # Parse addresses (one per line, ignore comments)
+        addresses = []
+        for line in addresses_text.split('\n'):
+            line = line.strip()
+            if line and not line.startswith('#'):
+                addresses.append(line)
+
+        if not addresses:
+            messagebox.showwarning("Warning", "No valid addresses found.")
+            return
+
+        # Disable buttons and start progress
+        self.disable_buttons()
+        self.reset_progress()
+        self.progress_var.set(f"Checking balances for {len(addresses)} addresses...")
+
+        # Run balance checking in thread
+        thread = threading.Thread(target=self._check_manual_balances_thread, args=(addresses, wallet_type))
+        thread.daemon = True
+        thread.start()
+
+    def clear_manual_results(self):
+        """Clear manual balance results"""
+        self.manual_balance_text.delete(1.0, tk.END)
+        self.manual_addresses_text.delete(1.0, tk.END)
+        self.manual_addresses_text.insert(tk.END, "# Enter addresses (one per line)\n# Example:\n# 0x1234567890abcdef...\n# 0xabcdef1234567890...")
+
+    def _check_manual_balances_thread(self, addresses, wallet_type):
+        """Check balances for multiple addresses in background thread"""
+        try:
+            results = {}
+            total_balance = 0.0
+            valid_addresses = 0
+            
+            for i, address in enumerate(addresses, 1):
+                # Update progress
+                percentage = int((i / len(addresses)) * 100)
+                self.root.after(0, lambda p=percentage, addr=address: self.update_progress(p, f"Fetching balance for {addr}..."))
+                
+                # Fetch balance
+                balance_data = self.debank_client.get_total_balance(address)
+                
+                if balance_data:
+                    parsed = self.debank_client.parse_balance_data(balance_data)
+                    balance_usd = parsed['total_balance_usd']
+                    total_balance += balance_usd
+                    valid_addresses += 1
+                    
+                    results[address] = {
+                        'balance_data': balance_data,
+                        'parsed': parsed,
+                        'success': True
+                    }
+                else:
+                    results[address] = {
+                        'balance_data': None,
+                        'parsed': None,
+                        'success': False
+                    }
+                
+                # Small delay to avoid rate limiting
+                import time
+                time.sleep(0.5)
+            
+            # Update GUI in main thread
+            self.root.after(0, self._update_manual_balances_results, addresses, results, total_balance, valid_addresses, wallet_type)
+            
+        except Exception as e:
+            self.root.after(0, lambda: self._show_error(f"Manual balance checking error: {e}"))
+
+    def _update_manual_balances_results(self, addresses, results, total_balance, valid_addresses, wallet_type):
+        """Update GUI after manual balance checking for multiple addresses"""
+        self.complete_progress("Manual balance checking completed")
+        
+        # Update manual balance text
+        self.manual_balance_text.delete(1.0, tk.END)
+        
+        # Header
+        self.manual_balance_text.insert(tk.END, f"📊 MANUAL BALANCE CHECK RESULTS\n")
+        self.manual_balance_text.insert(tk.END, f"{'='*60}\n\n")
+        
+        # Summary
+        self.manual_balance_text.insert(tk.END, f"Wallet Type: {wallet_type}\n")
+        self.manual_balance_text.insert(tk.END, f"Total Addresses: {len(addresses)}\n")
+        self.manual_balance_text.insert(tk.END, f"Valid Addresses: {valid_addresses}\n")
+        self.manual_balance_text.insert(tk.END, f"Failed Addresses: {len(addresses) - valid_addresses}\n")
+        self.manual_balance_text.insert(tk.END, f"TOTAL BALANCE: ${total_balance:,.2f} USD\n\n")
+        
+        # Individual results
+        self.manual_balance_text.insert(tk.END, f"INDIVIDUAL ADDRESS RESULTS:\n")
+        self.manual_balance_text.insert(tk.END, f"{'-'*60}\n")
+        
+        for address in addresses:
+            result = results.get(address, {})
+            self.manual_balance_text.insert(tk.END, f"\n📍 Address: {address}\n")
+            
+            if result.get('success'):
+                parsed = result['parsed']
+                balance_usd = parsed['total_balance_usd']
+                self.manual_balance_text.insert(tk.END, f"   💰 Balance: ${balance_usd:,.2f} USD\n")
+                self.manual_balance_text.insert(tk.END, f"   ✅ Status: Valid\n")
+            else:
+                self.manual_balance_text.insert(tk.END, f"   ❌ Balance: No data available\n")
+                self.manual_balance_text.insert(tk.END, f"   ❌ Status: Failed to fetch\n")
+        
+        # Footer
+        self.manual_balance_text.insert(tk.END, f"\n{'-'*60}\n")
+        self.manual_balance_text.insert(tk.END, f"✅ Manual balance checking completed successfully!\n")
+        
+        # Enable buttons
+        self._enable_buttons()
 
 def main():
     """Main application entry point"""
