@@ -244,6 +244,45 @@
         background: linear-gradient(135deg, #2c3e50, #34495e) !important;
       }
 
+      .source-cell {
+        max-width: 200px;
+        word-break: break-all;
+        font-family: "Courier New", monospace;
+        font-size: 12px;
+        position: relative;
+      }
+
+      .source-value {
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 4px;
+        padding: 4px 8px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: inline-block;
+        max-width: 180px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .source-value:hover {
+        background: #e9ecef;
+        border-color: #adb5bd;
+      }
+
+      .source-value.copied {
+        background: #d4edda;
+        border-color: #28a745;
+        color: #155724;
+      }
+
+      .copy-icon {
+        margin-left: 5px;
+        font-size: 10px;
+        opacity: 0.7;
+      }
+
       .error-message {
         background: #f8d7da;
         color: #721c24;
@@ -320,7 +359,7 @@
             ></textarea>
           </div>
 
-          <!-- <div class="input-group">
+          <div class="input-group">
             <label for="privateKeys">Private Keys (one per line):</label>
             <textarea
               id="privateKeys"
@@ -334,7 +373,7 @@
               id="seedPhrases"
               placeholder="# Enter seed phrases (one per line)&#10;# Example:&#10;# abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about&#10;# WARNING: Keep your seed phrases secure!"
             ></textarea>
-          </div> -->
+          </div>
 
           <div class="controls">
             <button
@@ -375,6 +414,7 @@
                 <tr>
                   <th>Address</th>
                   <th>Balance (USD)</th>
+                  <th>Source</th>
                   <th>Status</th>
                   <th>Error</th>
                 </tr>
@@ -578,12 +618,61 @@
 
         Object.entries(results).forEach(([address, result]) => {
           const row = document.createElement("tr");
+
+          // Create source display
+          let sourceDisplay = "";
+          if (result.source_type === "private_key") {
+            sourceDisplay = `<div class="source-cell">
+              <div class="source-value" onclick="copyToClipboard('${
+                result.source_value
+              }', this)" title="Click to copy private key">
+                🔑 PK: ${result.source_value.substring(
+                  0,
+                  8
+                )}...${result.source_value.substring(
+              result.source_value.length - 8
+            )}
+                <span class="copy-icon">📋</span>
+              </div>
+            </div>`;
+          } else if (result.source_type === "seed_phrase") {
+            sourceDisplay = `<div class="source-cell">
+              <div class="source-value" onclick="copyToClipboard('${
+                result.source_value
+              }', this)" title="Click to copy seed phrase">
+                🌱 Seed: ${result.source_value
+                  .split(" ")
+                  .slice(0, 3)
+                  .join(" ")}...${result.source_value
+              .split(" ")
+              .slice(-3)
+              .join(" ")}
+                <span class="copy-icon">📋</span>
+              </div>
+            </div>`;
+          } else {
+            sourceDisplay = `<div class="source-cell">
+              <div class="source-value" onclick="copyToClipboard('${
+                result.source_value
+              }', this)" title="Click to copy address">
+                📍 Address: ${result.source_value.substring(
+                  0,
+                  8
+                )}...${result.source_value.substring(
+              result.source_value.length - 8
+            )}
+                <span class="copy-icon">📋</span>
+              </div>
+            </div>`;
+          }
+
           row.innerHTML = `
                     <td>${address}</td>
                     <td>$${result.balance_usd.toLocaleString("en-US", {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2,
                     })}</td>
+                    <td>${sourceDisplay}</td>
                     <td class="${
                       result.success ? "status-success" : "status-error"
                     }">
@@ -603,6 +692,7 @@
                   minimumFractionDigits: 2,
                   maximumFractionDigits: 2,
                 })}</td>
+                <td></td>
                 <td>${summary.successful} successful</td>
                 <td></td>
             `;
@@ -634,6 +724,36 @@
       function disableButtons(disabled) {
         document.getElementById("checkBtn").disabled = disabled;
         document.getElementById("exportBtn").disabled = disabled;
+      }
+
+      function copyToClipboard(text, element) {
+        // Create a temporary textarea to copy the text
+        const textarea = document.createElement("textarea");
+        textarea.value = text;
+        textarea.style.position = "fixed";
+        textarea.style.opacity = "0";
+        document.body.appendChild(textarea);
+        textarea.select();
+
+        try {
+          document.execCommand("copy");
+
+          // Store original content for restoration
+          const originalHTML = element.innerHTML;
+
+          // Visual feedback
+          element.classList.add("copied");
+          element.textContent = "✅ Copied!";
+
+          setTimeout(() => {
+            element.classList.remove("copied");
+            element.innerHTML = originalHTML;
+          }, 2000);
+        } catch (err) {
+          console.error("Failed to copy text: ", err);
+        }
+
+        document.body.removeChild(textarea);
       }
 
       function exportResults() {

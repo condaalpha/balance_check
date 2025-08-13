@@ -124,26 +124,59 @@ async def check_balances(addresses: str = Form(""), private_keys: str = Form("")
         if not address_list and not pk_list and not seed_list:
             raise HTTPException(status_code=400, detail="No valid addresses, private keys, or seed phrases provided")
         
-        # Get addresses from private keys
-        pk_addresses = []
+        # Get addresses from private keys with source tracking
+        pk_results = []
         if pk_list:
-            pk_addresses = await get_addresses_from_private_keys(pk_list)
+            pk_results = await get_addresses_from_private_keys_with_source(pk_list)
         
-        # Get addresses from seed phrases
-        seed_addresses = []
+        # Get addresses from seed phrases with source tracking
+        seed_results = []
         if seed_list:
-            seed_addresses = await get_addresses_from_seed_phrases(seed_list)
+            seed_results = await get_addresses_from_seed_phrases_with_source(seed_list)
         
-        # Combine all addresses
-        all_addresses = address_list + pk_addresses + seed_addresses
+        # Create address mapping with source information
+        address_sources = {}
+        
+        # Add direct addresses
+        for addr in address_list:
+            address_sources[addr] = {"type": "address", "source": addr}
+        
+        # Add PK-derived addresses
+        for result in pk_results:
+            if result['success']:
+                address_sources[result['address']] = {
+                    "type": "private_key", 
+                    "source": result['private_key']
+                }
+        
+        # Add seed-derived addresses
+        for result in seed_results:
+            if result['success']:
+                address_sources[result['address']] = {
+                    "type": "seed_phrase", 
+                    "source": result['seed_phrase']
+                }
+        
+        # Get all addresses
+        all_addresses = list(address_sources.keys())
         
         # Check balances concurrently
-        results = await check_multiple_balances(all_addresses)
+        balance_results = await check_multiple_balances(all_addresses)
+        
+        # Combine balance results with source information
+        final_results = {}
+        for address, balance_result in balance_results.items():
+            source_info = address_sources.get(address, {"type": "unknown", "source": address})
+            final_results[address] = {
+                **balance_result,
+                "source_type": source_info["type"],
+                "source_value": source_info["source"]
+            }
         
         return JSONResponse(content={
             "success": True,
-            "results": results,
-            "summary": generate_summary(results),
+            "results": final_results,
+            "summary": generate_summary(balance_results),
             "timestamp": datetime.now().isoformat(),
             "address_count": len(address_list),
             "pk_count": len(pk_list),
@@ -152,6 +185,58 @@ async def check_balances(addresses: str = Form(""), private_keys: str = Form("")
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+async def get_addresses_from_private_keys_with_source(private_keys: List[str]) -> List[Dict]:
+    """Convert private keys to addresses with source tracking"""
+    results = []
+    
+    for pk in private_keys:
+        try:
+            # Remove 0x prefix if present for validation
+            pk_clean = pk
+            if pk.startswith('0x'):
+                pk_clean = pk[2:]
+            
+            # Validate private key format (allow both uppercase and lowercase hex)
+            pk_lower = pk_clean.lower()
+            if len(pk_clean) != 64 or not all(c in '0123456789abcdef' for c in pk_lower):
+                results.append({
+                    'success': False,
+                    'address': f"INVALID_PK_{pk[:8]}...",
+                    'private_key': pk,
+                    'error': 'Invalid private key format'
+                })
+                continue
+            
+            # Convert private key to address using eth-account
+            from eth_account import Account
+            
+            # Normalize private key (add 0x prefix if missing)
+            pk_normalized = pk
+            if not pk.startswith('0x'):
+                pk_normalized = '0x' + pk
+            
+            # Derive address using eth-account
+            account = Account.from_key(pk_normalized)
+            address = account.address  # This gives EIP-55 checksummed address
+            
+            results.append({
+                'success': True,
+                'address': address,
+                'private_key': pk,  # Keep original input format
+                'error': None
+            })
+            
+        except Exception as e:
+            print(f"Error converting private key to address: {e}")
+            results.append({
+                'success': False,
+                'address': f"INVALID_PK_{pk[:8]}...",
+                'private_key': pk,
+                'error': str(e)
+            })
+    
+    return results
 
 async def get_addresses_from_private_keys(private_keys: List[str]) -> List[str]:
     """Convert private keys to addresses using ecdsa"""
@@ -187,6 +272,38 @@ async def get_addresses_from_private_keys(private_keys: List[str]) -> List[str]:
             addresses.append(f"INVALID_PK_{pk[:8]}...")
     
     return addresses
+
+async def get_addresses_from_seed_phrases_with_source(seed_phrases: List[str]) -> List[Dict]:
+    """Convert seed phrases to addresses with source tracking"""
+    results = []
+    
+    # Enable HD wallet features in eth-account
+    from eth_account import Account
+    Account.enable_unaudited_hdwallet_features()
+    
+    for seed in seed_phrases:
+        try:
+            # Derive account from mnemonic using default path m/44'/60'/0'/0/0
+            account = Account.from_mnemonic(seed, account_path="m/44'/60'/0'/0/0")
+            address = account.address
+            
+            results.append({
+                'success': True,
+                'address': address,
+                'seed_phrase': seed,  # Keep original seed phrase
+                'error': None
+            })
+            
+        except Exception as e:
+            print(f"Error converting seed phrase to address: {e}")
+            results.append({
+                'success': False,
+                'address': f"INVALID_SEED_{seed[:20]}...",
+                'seed_phrase': seed,
+                'error': str(e)
+            })
+    
+    return results
 
 async def get_addresses_from_seed_phrases(seed_phrases: List[str]) -> List[str]:
     """Convert seed phrases to addresses using eth-account HD wallet"""
