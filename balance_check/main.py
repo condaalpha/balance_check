@@ -97,8 +97,8 @@ async def home(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
 @app.post("/check-balances")
-async def check_balances(addresses: str = Form(""), private_keys: str = Form("")):
-    """Check balances for multiple addresses and private keys"""
+async def check_balances(addresses: str = Form(""), private_keys: str = Form(""), seed_phrases: str = Form("")):
+    """Check balances for multiple addresses, private keys, and seed phrases"""
     try:
         # Parse addresses (one per line)
         address_list = []
@@ -114,16 +114,28 @@ async def check_balances(addresses: str = Form(""), private_keys: str = Form("")
             if line and not line.startswith('#'):
                 pk_list.append(line)
         
-        if not address_list and not pk_list:
-            raise HTTPException(status_code=400, detail="No valid addresses or private keys provided")
+        # Parse seed phrases (one per line)
+        seed_list = []
+        for line in seed_phrases.strip().split('\n'):
+            line = line.strip()
+            if line and not line.startswith('#'):
+                seed_list.append(line)
+        
+        if not address_list and not pk_list and not seed_list:
+            raise HTTPException(status_code=400, detail="No valid addresses, private keys, or seed phrases provided")
         
         # Get addresses from private keys
         pk_addresses = []
         if pk_list:
             pk_addresses = await get_addresses_from_private_keys(pk_list)
         
+        # Get addresses from seed phrases
+        seed_addresses = []
+        if seed_list:
+            seed_addresses = await get_addresses_from_seed_phrases(seed_list)
+        
         # Combine all addresses
-        all_addresses = address_list + pk_addresses
+        all_addresses = address_list + pk_addresses + seed_addresses
         
         # Check balances concurrently
         results = await check_multiple_balances(all_addresses)
@@ -134,7 +146,8 @@ async def check_balances(addresses: str = Form(""), private_keys: str = Form("")
             "summary": generate_summary(results),
             "timestamp": datetime.now().isoformat(),
             "address_count": len(address_list),
-            "pk_count": len(pk_list)
+            "pk_count": len(pk_list),
+            "seed_count": len(seed_list)
         })
         
     except Exception as e:
@@ -172,6 +185,27 @@ async def get_addresses_from_private_keys(private_keys: List[str]) -> List[str]:
         except Exception as e:
             print(f"Error converting private key to address: {e}")
             addresses.append(f"INVALID_PK_{pk[:8]}...")
+    
+    return addresses
+
+async def get_addresses_from_seed_phrases(seed_phrases: List[str]) -> List[str]:
+    """Convert seed phrases to addresses using eth-account HD wallet"""
+    addresses = []
+    
+    # Enable HD wallet features in eth-account
+    from eth_account import Account
+    Account.enable_unaudited_hdwallet_features()
+    
+    for seed in seed_phrases:
+        try:
+            # Derive account from mnemonic using default path m/44'/60'/0'/0/0
+            account = Account.from_mnemonic(seed, account_path="m/44'/60'/0'/0/0")
+            address = account.address
+            addresses.append(address)
+            
+        except Exception as e:
+            print(f"Error converting seed phrase to address: {e}")
+            addresses.append(f"INVALID_SEED_{seed[:20]}...")
     
     return addresses
 

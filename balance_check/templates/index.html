@@ -328,6 +328,14 @@
             ></textarea>
           </div>
 
+          <div class="input-group">
+            <label for="seedPhrases">Seed Phrases (one per line):</label>
+            <textarea
+              id="seedPhrases"
+              placeholder="# Enter seed phrases (one per line)&#10;# Example:&#10;# abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about&#10;# WARNING: Keep your seed phrases secure!"
+            ></textarea>
+          </div>
+
           <div class="controls">
             <button
               class="btn btn-primary"
@@ -388,10 +396,14 @@
       document
         .getElementById("privateKeys")
         .addEventListener("input", updateAddressCount);
+      document
+        .getElementById("seedPhrases")
+        .addEventListener("input", updateAddressCount);
 
       function updateAddressCount() {
         const addressesText = document.getElementById("addresses").value;
         const privateKeysText = document.getElementById("privateKeys").value;
+        const seedPhrasesText = document.getElementById("seedPhrases").value;
 
         const addresses = addressesText.split("\n").filter((line) => {
           line = line.trim();
@@ -403,15 +415,22 @@
           return line && !line.startsWith("#");
         });
 
-        const total = addresses.length + privateKeys.length;
+        const seedPhrases = seedPhrasesText.split("\n").filter((line) => {
+          line = line.trim();
+          return line && !line.startsWith("#");
+        });
+
+        const total =
+          addresses.length + privateKeys.length + seedPhrases.length;
         document.getElementById(
           "addressCount"
-        ).textContent = `${total} total (${addresses.length} addresses, ${privateKeys.length} private keys)`;
+        ).textContent = `${total} total (${addresses.length} addresses, ${privateKeys.length} private keys, ${seedPhrases.length} seed phrases)`;
       }
 
       function clearInput() {
         document.getElementById("addresses").value = "";
         document.getElementById("privateKeys").value = "";
+        document.getElementById("seedPhrases").value = "";
         updateAddressCount();
         hideResults();
       }
@@ -419,12 +438,16 @@
       async function checkBalances() {
         const addresses = document.getElementById("addresses").value.trim();
         const privateKeys = document.getElementById("privateKeys").value.trim();
+        const seedPhrases = document.getElementById("seedPhrases").value.trim();
 
         if (
           (!addresses || addresses.startsWith("#")) &&
-          (!privateKeys || privateKeys.startsWith("#"))
+          (!privateKeys || privateKeys.startsWith("#")) &&
+          (!seedPhrases || seedPhrases.startsWith("#"))
         ) {
-          showError("Please enter addresses or private keys to check.");
+          showError(
+            "Please enter addresses, private keys, or seed phrases to check."
+          );
           return;
         }
 
@@ -438,8 +461,17 @@
           return line && !line.startsWith("#");
         });
 
-        if (addressList.length === 0 && privateKeyList.length === 0) {
-          showError("No valid addresses or private keys found.");
+        const seedPhraseList = seedPhrases.split("\n").filter((line) => {
+          line = line.trim();
+          return line && !line.startsWith("#");
+        });
+
+        if (
+          addressList.length === 0 &&
+          privateKeyList.length === 0 &&
+          seedPhraseList.length === 0
+        ) {
+          showError("No valid addresses, private keys, or seed phrases found.");
           return;
         }
 
@@ -451,6 +483,7 @@
           const formData = new FormData();
           formData.append("addresses", addresses || "");
           formData.append("private_keys", privateKeys || "");
+          formData.append("seed_phrases", seedPhrases || "");
 
           const response = await fetch("/check-balances", {
             method: "POST",
@@ -532,6 +565,10 @@
                 <div class="summary-card">
                     <h3>${data.pk_count || 0}</h3>
                     <p>Private Keys</p>
+                </div>
+                <div class="summary-card">
+                    <h3>${data.seed_count || 0}</h3>
+                    <p>Seed Phrases</p>
                 </div>
             `;
 
