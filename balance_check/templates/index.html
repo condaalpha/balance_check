@@ -320,6 +320,14 @@
             ></textarea>
           </div>
 
+          <div class="input-group">
+            <label for="privateKeys">Private Keys (one per line):</label>
+            <textarea
+              id="privateKeys"
+              placeholder="# Enter private keys (one per line)&#10;# Example:&#10;# 1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef&#10;# abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890&#10;# WARNING: Keep your private keys secure!"
+            ></textarea>
+          </div>
+
           <div class="controls">
             <button
               class="btn btn-primary"
@@ -377,29 +385,46 @@
       document
         .getElementById("addresses")
         .addEventListener("input", updateAddressCount);
+      document
+        .getElementById("privateKeys")
+        .addEventListener("input", updateAddressCount);
 
       function updateAddressCount() {
-        const text = document.getElementById("addresses").value;
-        const addresses = text.split("\n").filter((line) => {
+        const addressesText = document.getElementById("addresses").value;
+        const privateKeysText = document.getElementById("privateKeys").value;
+
+        const addresses = addressesText.split("\n").filter((line) => {
           line = line.trim();
           return line && !line.startsWith("#");
         });
+
+        const privateKeys = privateKeysText.split("\n").filter((line) => {
+          line = line.trim();
+          return line && !line.startsWith("#");
+        });
+
+        const total = addresses.length + privateKeys.length;
         document.getElementById(
           "addressCount"
-        ).textContent = `${addresses.length} addresses`;
+        ).textContent = `${total} total (${addresses.length} addresses, ${privateKeys.length} private keys)`;
       }
 
       function clearInput() {
         document.getElementById("addresses").value = "";
+        document.getElementById("privateKeys").value = "";
         updateAddressCount();
         hideResults();
       }
 
       async function checkBalances() {
         const addresses = document.getElementById("addresses").value.trim();
+        const privateKeys = document.getElementById("privateKeys").value.trim();
 
-        if (!addresses || addresses.startsWith("#")) {
-          showError("Please enter addresses to check.");
+        if (
+          (!addresses || addresses.startsWith("#")) &&
+          (!privateKeys || privateKeys.startsWith("#"))
+        ) {
+          showError("Please enter addresses or private keys to check.");
           return;
         }
 
@@ -408,8 +433,13 @@
           return line && !line.startsWith("#");
         });
 
-        if (addressList.length === 0) {
-          showError("No valid addresses found.");
+        const privateKeyList = privateKeys.split("\n").filter((line) => {
+          line = line.trim();
+          return line && !line.startsWith("#");
+        });
+
+        if (addressList.length === 0 && privateKeyList.length === 0) {
+          showError("No valid addresses or private keys found.");
           return;
         }
 
@@ -419,7 +449,8 @@
 
         try {
           const formData = new FormData();
-          formData.append("addresses", addresses);
+          formData.append("addresses", addresses || "");
+          formData.append("private_keys", privateKeys || "");
 
           const response = await fetch("/check-balances", {
             method: "POST",
@@ -493,6 +524,14 @@
                       maximumFractionDigits: 2,
                     })}</h3>
                     <p>Total Balance</p>
+                </div>
+                <div class="summary-card">
+                    <h3>${data.address_count || 0}</h3>
+                    <p>Direct Addresses</p>
+                </div>
+                <div class="summary-card">
+                    <h3>${data.pk_count || 0}</h3>
+                    <p>Private Keys</p>
                 </div>
             `;
 

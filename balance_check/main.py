@@ -97,8 +97,8 @@ async def home(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
 @app.post("/check-balances")
-async def check_balances(addresses: str = Form(...)):
-    """Check balances for multiple addresses"""
+async def check_balances(addresses: str = Form(""), private_keys: str = Form("")):
+    """Check balances for multiple addresses and private keys"""
     try:
         # Parse addresses (one per line)
         address_list = []
@@ -107,21 +107,73 @@ async def check_balances(addresses: str = Form(...)):
             if line and not line.startswith('#'):
                 address_list.append(line)
         
-        if not address_list:
-            raise HTTPException(status_code=400, detail="No valid addresses provided")
+        # Parse private keys (one per line)
+        pk_list = []
+        for line in private_keys.strip().split('\n'):
+            line = line.strip()
+            if line and not line.startswith('#'):
+                pk_list.append(line)
+        
+        if not address_list and not pk_list:
+            raise HTTPException(status_code=400, detail="No valid addresses or private keys provided")
+        
+        # Get addresses from private keys
+        pk_addresses = []
+        if pk_list:
+            pk_addresses = await get_addresses_from_private_keys(pk_list)
+        
+        # Combine all addresses
+        all_addresses = address_list + pk_addresses
         
         # Check balances concurrently
-        results = await check_multiple_balances(address_list)
+        results = await check_multiple_balances(all_addresses)
         
         return JSONResponse(content={
             "success": True,
             "results": results,
             "summary": generate_summary(results),
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
+            "address_count": len(address_list),
+            "pk_count": len(pk_list)
         })
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+async def get_addresses_from_private_keys(private_keys: List[str]) -> List[str]:
+    """Convert private keys to addresses using ecdsa"""
+    addresses = []
+    
+    for pk in private_keys:
+        try:
+            # Remove 0x prefix if present
+            if pk.startswith('0x'):
+                pk = pk[2:]
+            
+            # Validate private key format (allow both uppercase and lowercase hex)
+            pk_lower = pk.lower()
+            if len(pk) != 64 or not all(c in '0123456789abcdef' for c in pk_lower):
+                addresses.append(f"INVALID_PK_{pk[:8]}...")
+                continue
+            
+            # Convert private key to address using eth-account (same as your example)
+            from eth_account import Account
+            
+            # Normalize private key (add 0x prefix if missing)
+            if not pk.startswith('0x'):
+                pk = '0x' + pk
+            
+            # Derive address using eth-account
+            account = Account.from_key(pk)
+            address = account.address  # This gives EIP-55 checksummed address
+            
+            addresses.append(address)
+            
+        except Exception as e:
+            print(f"Error converting private key to address: {e}")
+            addresses.append(f"INVALID_PK_{pk[:8]}...")
+    
+    return addresses
 
 async def check_multiple_balances(addresses: List[str]) -> Dict:
     """Check balances for multiple addresses concurrently"""
