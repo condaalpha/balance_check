@@ -19,12 +19,13 @@
       }
 
       .container {
-        max-width: 1200px;
+        max-width: 1800px;
         margin: 0 auto;
         background: white;
         border-radius: 15px;
         box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
         overflow: hidden;
+        min-height: 95vh;
       }
 
       .header {
@@ -46,10 +47,16 @@
 
       .main-content {
         padding: 40px;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 40px;
+        min-height: 700px;
+        height: calc(95vh - 140px);
       }
 
       .input-section {
-        margin-bottom: 40px;
+        display: flex;
+        flex-direction: column;
       }
 
       .input-group {
@@ -65,7 +72,7 @@
 
       textarea {
         width: 100%;
-        min-height: 200px;
+        min-height: 180px;
         padding: 15px;
         border: 2px solid #e1e8ed;
         border-radius: 10px;
@@ -85,6 +92,7 @@
         gap: 15px;
         align-items: center;
         flex-wrap: wrap;
+        margin-top: auto;
       }
 
       .btn {
@@ -169,26 +177,47 @@
       }
 
       .results-section {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        overflow: hidden;
+      }
+
+      .results-section.hidden {
         display: none;
+      }
+
+      .results-placeholder {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        color: #7f8c8d;
+        font-size: 1.2rem;
+        text-align: center;
+        background: #f8f9fa;
+        border-radius: 10px;
+        border: 2px dashed #dee2e6;
       }
 
       .summary-cards {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 20px;
-        margin-bottom: 30px;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 15px;
+        margin-bottom: 20px;
+        flex-shrink: 0;
       }
 
       .summary-card {
         background: linear-gradient(135deg, #f8f9fa, #e9ecef);
-        padding: 20px;
+        padding: 15px;
         border-radius: 10px;
         text-align: center;
         border-left: 4px solid #3498db;
       }
 
       .summary-card h3 {
-        font-size: 2rem;
+        font-size: 1.5rem;
         color: #2c3e50;
         margin-bottom: 5px;
       }
@@ -196,6 +225,45 @@
       .summary-card p {
         color: #7f8c8d;
         font-weight: 600;
+        font-size: 0.9rem;
+      }
+
+      .table-container {
+        flex: 1;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        border-radius: 10px;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        max-height: 700px;
+        overflow-y: auto;
+        scrollbar-width: thin;
+        scrollbar-color: #3498db #ecf0f1;
+        scroll-behavior: smooth;
+      }
+
+      /* Webkit scrollbar styling for Chrome, Safari, Edge */
+      .table-container::-webkit-scrollbar {
+        width: 8px;
+      }
+
+      .table-container::-webkit-scrollbar-track {
+        background: #ecf0f1;
+        border-radius: 4px;
+      }
+
+      .table-container::-webkit-scrollbar-thumb {
+        background: linear-gradient(135deg, #3498db, #2980b9);
+        border-radius: 4px;
+        transition: background 0.3s ease;
+      }
+
+      .table-container::-webkit-scrollbar-thumb:hover {
+        background: linear-gradient(135deg, #2980b9, #1f5f8b);
+      }
+
+      .table-container::-webkit-scrollbar-corner {
+        background: #ecf0f1;
       }
 
       .results-table {
@@ -205,19 +273,28 @@
         border-radius: 10px;
         overflow: hidden;
         box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        flex: 1;
+      }
+
+      .results-table thead {
+        position: sticky;
+        top: 0;
+        z-index: 10;
       }
 
       .results-table th {
         background: linear-gradient(135deg, #2c3e50, #34495e);
         color: white;
-        padding: 15px;
+        padding: 12px;
         text-align: left;
         font-weight: 600;
+        font-size: 0.9rem;
       }
 
       .results-table td {
-        padding: 12px 15px;
+        padding: 10px 12px;
         border-bottom: 1px solid #ecf0f1;
+        font-size: 0.9rem;
       }
 
       .results-table tr:hover {
@@ -245,10 +322,10 @@
       }
 
       .source-cell {
-        max-width: 200px;
+        max-width: 150px;
         word-break: break-all;
         font-family: "Courier New", monospace;
-        font-size: 12px;
+        font-size: 11px;
         position: relative;
       }
 
@@ -260,7 +337,7 @@
         cursor: pointer;
         transition: all 0.2s ease;
         display: inline-block;
-        max-width: 180px;
+        max-width: 130px;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
@@ -301,6 +378,21 @@
         border-left: 4px solid #28a745;
       }
 
+      @media (max-width: 1400px) {
+        .main-content {
+          grid-template-columns: 1fr;
+          gap: 20px;
+        }
+
+        .results-section {
+          order: -1;
+        }
+
+        .summary-cards {
+          grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        }
+      }
+
       @media (max-width: 768px) {
         .container {
           margin: 10px;
@@ -309,6 +401,7 @@
 
         .main-content {
           padding: 20px;
+          gap: 15px;
         }
 
         .header h1 {
@@ -335,6 +428,10 @@
         .results-table th,
         .results-table td {
           padding: 8px;
+        }
+
+        textarea {
+          min-height: 150px;
         }
       }
     </style>
@@ -406,9 +503,27 @@
         </div>
 
         <div class="results-section" id="resultsSection">
-          <div class="summary-cards" id="summaryCards"></div>
+          <div class="results-placeholder" id="resultsPlaceholder">
+            <div>
+              <h3>📊 Results will appear here</h3>
+              <p>
+                Enter addresses, private keys, or seed phrases and click "Check
+                Balances" to see results
+              </p>
+            </div>
+          </div>
 
-          <div class="table-container">
+          <div
+            class="summary-cards"
+            id="summaryCards"
+            style="display: none"
+          ></div>
+
+          <div
+            class="table-container"
+            id="tableContainer"
+            style="display: none"
+          >
             <table class="results-table" id="resultsTable">
               <thead>
                 <tr>
@@ -576,6 +691,11 @@
       function showResults(data) {
         const { results, summary } = data;
 
+        // Hide placeholder and show results
+        document.getElementById("resultsPlaceholder").style.display = "none";
+        document.getElementById("summaryCards").style.display = "grid";
+        document.getElementById("tableContainer").style.display = "flex";
+
         // Show summary cards
         const summaryCards = document.getElementById("summaryCards");
         summaryCards.innerHTML = `
@@ -698,12 +818,13 @@
             `;
         tbody.appendChild(totalRow);
 
-        document.getElementById("resultsSection").style.display = "block";
         document.getElementById("exportBtn").disabled = false;
       }
 
       function hideResults() {
-        document.getElementById("resultsSection").style.display = "none";
+        document.getElementById("resultsPlaceholder").style.display = "flex";
+        document.getElementById("summaryCards").style.display = "none";
+        document.getElementById("tableContainer").style.display = "none";
         document.getElementById("exportBtn").disabled = true;
         currentResults = null;
       }

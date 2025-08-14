@@ -13,8 +13,9 @@ from pathlib import Path
 from wallet_extractor.config import Config
 from wallet_extractor.extractors import WalletProcessor
 from wallet_extractor.api_client import DeBankClient
-from wallet_extractor.database_service import db_service
-from wallet_extractor.models import db_manager
+# Temporarily disabled for faster startup
+# from wallet_extractor.database_service import db_service
+# from wallet_extractor.models import db_manager
 from wallet_extractor.wallet_config import WalletConfig
 
 class ModernTheme:
@@ -112,7 +113,9 @@ class WalletExtractorGUI:
         # Create GUI
         self.create_widgets()
         self.add_button_hover_effects()
-        self.initialize_database()
+        
+        # Temporarily disable database initialization for faster startup
+        # self.initialize_database()
         
         # Initialize wallet dropdown
         self.initialize_wallet_dropdown()
@@ -264,12 +267,13 @@ class WalletExtractorGUI:
                                               **button_style)
         self.check_balances_button.pack(side=tk.LEFT, padx=(0, 10))
         
-        self.save_db_button = tk.Button(buttons_frame, 
-                                       text="💾 Save to Database", 
-                                       command=self.save_to_database, 
-                                       state='disabled',
-                                       **button_style)
-        self.save_db_button.pack(side=tk.LEFT, padx=(0, 10))
+        # Temporarily disabled for faster startup
+        # self.save_db_button = tk.Button(buttons_frame, 
+        #                                text="💾 Save to Database", 
+        #                                command=self.save_to_database, 
+        #                                state='disabled',
+        #                                **button_style)
+        # self.save_db_button.pack(side=tk.LEFT, padx=(0, 10))
         
         self.export_button = tk.Button(buttons_frame, 
                                       text="📤 Export Results", 
@@ -334,8 +338,8 @@ class WalletExtractorGUI:
         # Manual Input tab
         self.manual_input_frame = self.create_manual_input_tab()
         
-        # Database tab
-        self.db_text = self.create_modern_text_widget(self.notebook, "🗄️ Database")
+        # Database tab - temporarily disabled for faster startup
+        # self.db_text = self.create_modern_text_widget(self.notebook, "🗄️ Database")
     
     def create_modern_text_widget(self, parent, tab_name):
         """Create a modern styled text widget"""
@@ -538,36 +542,39 @@ class WalletExtractorGUI:
         
         # Add hover effects to all buttons
         for button in [self.extract_button, self.check_balances_button, 
-                      self.save_db_button, self.export_button, self.browse_button, self.clear_button, 
+                      # self.save_db_button,  # Temporarily disabled
+                      self.export_button, self.browse_button, self.clear_button, 
                       self.detect_button, self.copy_addresses_button]:
             button.bind("<Enter>", on_enter)
             button.bind("<Leave>", on_leave)
     
     def initialize_database(self):
-        """Initialize database connection"""
-        try:
-            # Validate configuration
-            Config.validate_config()
-            
-            # Check existing tables
-            tables_exist = db_manager.check_tables_exist()
-            table_info = db_manager.get_table_info()
-            
-            # Create tables if needed
-            db_manager.create_tables()
-            
-            # Show status
-            status = "✅ Database initialized successfully\n\n"
-            status += "📊 Tables status:\n"
-            for table_name, info in table_info.items():
-                status += f"  ✅ {table_name}: {info['column_count']} columns\n"
-            
-            status += "\n💾 Data will be preserved across application runs"
-            
-            self.update_db_tab(status)
-            
-        except Exception as e:
-            self.update_db_tab(f"❌ Database error: {e}")
+        """Initialize database connection - temporarily disabled for faster startup"""
+        # Temporarily disabled for faster startup
+        pass
+        # try:
+        #     # Validate configuration
+        #     Config.validate_config()
+        #     
+        #     # Check existing tables
+        #     tables_exist = db_manager.check_tables_exist()
+        #     table_info = db_manager.get_table_info()
+        #     
+        #     # Create tables if needed
+        #     db_manager.create_tables()
+        #     
+        #     # Show status
+        #     status = "✅ Database initialized successfully\n\n"
+        #     status += "📊 Tables status:\n"
+        #     for table_name, info in table_info.items():
+        #         status += f"  ✅ {table_name}: {info['column_count']} columns\n"
+        #     
+        #     status += "\n💾 Data will be preserved across application runs"
+        #     
+        #     self.update_db_tab(status)
+        #     
+        # except Exception as e:
+        #     self.update_db_tab(f"❌ Database error: {e}")
     
     def initialize_wallet_dropdown(self):
         """Initialize wallet dropdown with available wallets"""
@@ -721,37 +728,41 @@ class WalletExtractorGUI:
             self.root.after(0, lambda: self._show_error(f"Balance checking error: {e}"))
     
     def save_to_database(self):
-        """Save data to database"""
-        if not self.addresses:
-            messagebox.showerror("Error", "No addresses to save")
-            return
-        
-        # Disable buttons and start progress
-        self.disable_buttons()
-        self.reset_progress()
-        self.progress_var.set("Saving to database...")
-        
-        # Run database save in thread
-        thread = threading.Thread(target=self._save_db_thread)
-        thread.daemon = True
-        thread.start()
+        """Save data to database - temporarily disabled for faster startup"""
+        messagebox.showinfo("Database Disabled", "Database functionality is temporarily disabled for faster startup.")
+        # Temporarily disabled for faster startup
+        # if not self.addresses:
+        #     messagebox.showerror("Error", "No addresses to save")
+        #     return
+        # 
+        # # Disable buttons and start progress
+        # self.disable_buttons()
+        # self.reset_progress()
+        # self.progress_var.set("Saving to database...")
+        # 
+        # # Run database save in thread
+        # thread = threading.Thread(target=self._save_db_thread)
+        # thread.daemon = True
+        # thread.start()
     
     def _save_db_thread(self):
-        """Save to database in background thread"""
-        try:
-            # Save addresses
-            addresses_saved = db_service.save_addresses(self.addresses)
-            
-            # Save balances if available
-            balances_saved = 0
-            if self.balance_results:
-                balances_saved = db_service.save_balances(self.balance_results)
-            
-            # Update GUI in main thread
-            self.root.after(0, lambda: self._update_db_save_results(addresses_saved, balances_saved))
-            
-        except Exception as e:
-            self.root.after(0, lambda: self._show_error(f"Database save error: {e}"))
+        """Save to database in background thread - temporarily disabled for faster startup"""
+        # Temporarily disabled for faster startup
+        pass
+        # try:
+        #     # Save addresses
+        #     addresses_saved = db_service.save_addresses(self.addresses)
+        #     
+        #     # Save balances if available
+        #     balances_saved = 0
+        #     if self.balance_results:
+        #         balances_saved = db_service.save_balances(self.balance_results)
+        #     
+        #     # Update GUI in main thread
+        #     self.root.after(0, lambda: self._update_db_save_results(addresses_saved, balances_saved))
+        #     
+        # except Exception as e:
+        #     self.root.after(0, lambda: self._show_error(f"Database save error: {e}"))
     
     def export_results(self):
         """Export results to file"""
@@ -799,7 +810,7 @@ class WalletExtractorGUI:
             self.summary_text.delete(1.0, tk.END)
             self.addresses_text.delete(1.0, tk.END)
             self.balances_text.delete(1.0, tk.END)
-            self.db_text.delete(1.0, tk.END)
+            # self.db_text.delete(1.0, tk.END)  # Temporarily disabled
             
             # Reset address count and copy button
             self.address_count_var.set("No addresses found")
@@ -812,7 +823,7 @@ class WalletExtractorGUI:
             # Reset button states
             self._enable_buttons()
             self.check_balances_button.config(state='disabled', bg=ModernTheme.BG_TERTIARY)
-            self.save_db_button.config(state='disabled', bg=ModernTheme.BG_TERTIARY)
+            # self.save_db_button.config(state='disabled', bg=ModernTheme.BG_TERTIARY)  # Temporarily disabled
             self.export_button.config(state='disabled', bg=ModernTheme.BG_TERTIARY)
             
             # Clear folder path
@@ -861,11 +872,13 @@ class WalletExtractorGUI:
         self._enable_buttons()
     
     def _update_db_save_results(self, addresses_saved, balances_saved):
-        """Update GUI after database save"""
-        self.complete_progress("Database save completed")
-        
-        # Update database tab
-        self._update_database_info()
+        """Update GUI after database save - temporarily disabled for faster startup"""
+        # Temporarily disabled for faster startup
+        pass
+        # self.complete_progress("Database save completed")
+        # 
+        # # Update database tab
+        # self._update_database_info()
     
     def _update_summary(self):
         """Update summary tab"""
@@ -961,28 +974,32 @@ class WalletExtractorGUI:
         self.balances_text.insert(tk.END, balances)
     
     def _update_database_info(self):
-        """Update database tab"""
-        try:
-            summary = db_service.get_total_balance_summary()
-            content = f"DATABASE SUMMARY\n{'='*50}\n\n"
-            content += f"Addresses in DB: {summary.get('total_addresses', 0)}\n"
-            content += f"Total value: ${summary.get('total_balance_usd', 0):,.2f} USD\n"
-            content += f"Average: ${summary.get('average_balance_usd', 0):,.2f} USD\n"
-            
-            self.update_db_tab(content)
-        except Exception as e:
-            self.update_db_tab(f"❌ Database error: {e}")
+        """Update database tab - temporarily disabled for faster startup"""
+        # Temporarily disabled for faster startup
+        pass
+        # try:
+        #     summary = db_service.get_total_balance_summary()
+        #     content = f"DATABASE SUMMARY\n{'='*50}\n\n"
+        #     content += f"Addresses in DB: {summary.get('total_addresses', 0)}\n"
+        #     content += f"Total value: ${summary.get('total_balance_usd', 0):,.2f} USD\n"
+        #     content += f"Average: ${summary.get('average_balance_usd', 0):,.2f} USD\n"
+        #     
+        #     self.update_db_tab(content)
+        # except Exception as e:
+        #     self.update_db_tab(f"❌ Database error: {e}")
     
     def update_db_tab(self, content):
-        """Update database tab"""
-        self.db_text.delete(1.0, tk.END)
-        self.db_text.insert(tk.END, content)
+        """Update database tab - temporarily disabled for faster startup"""
+        # Temporarily disabled for faster startup
+        pass
+        # self.db_text.delete(1.0, tk.END)
+        # self.db_text.insert(tk.END, content)
     
     def disable_buttons(self):
         """Disable buttons during operations"""
         self.extract_button.config(state='disabled', bg=ModernTheme.BG_TERTIARY)
         self.check_balances_button.config(state='disabled', bg=ModernTheme.BG_TERTIARY)
-        self.save_db_button.config(state='disabled', bg=ModernTheme.BG_TERTIARY)
+        # self.save_db_button.config(state='disabled', bg=ModernTheme.BG_TERTIARY)  # Temporarily disabled
         self.export_button.config(state='disabled', bg=ModernTheme.BG_TERTIARY)
         self.browse_button.config(state='disabled', bg=ModernTheme.BG_TERTIARY)
         self.detect_button.config(state='disabled', bg=ModernTheme.BG_TERTIARY)
@@ -1001,7 +1018,7 @@ class WalletExtractorGUI:
     def enable_action_buttons(self):
         """Enable action buttons when addresses are found"""
         self.check_balances_button.config(state='normal', bg=ModernTheme.ACCENT_PRIMARY)
-        self.save_db_button.config(state='normal', bg=ModernTheme.ACCENT_PRIMARY)
+        # self.save_db_button.config(state='normal', bg=ModernTheme.ACCENT_PRIMARY)  # Temporarily disabled
         self.export_button.config(state='normal', bg=ModernTheme.ACCENT_PRIMARY)
     
     def reset_progress(self):
@@ -1033,7 +1050,7 @@ class WalletExtractorGUI:
         self._update_summary()
         self._update_addresses()
         self._update_balances()
-        self._update_database_info()
+        # self._update_database_info()  # Temporarily disabled
 
     def check_manual_balances(self):
         """Check balances for multiple manual addresses"""
